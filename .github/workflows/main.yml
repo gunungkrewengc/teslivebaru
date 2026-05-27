@@ -26,18 +26,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Menggunakan Action FedericoCarboni tanpa mengunci versi untuk tes bawaannya
-      - name: Setup FFmpeg (Versi Default Action)
+      # 1. Setup FFmpeg dan mengunci langsung ke versi stabil paling terbaru (8.1.1)
+      - name: Setup FFmpeg 8.1.1 Terbaru
         uses: FedericoCarboni/setup-ffmpeg@v3
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ffmpeg-version: '8.1.1'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Langkah tambahan untuk intip versi yang didapat di log
+      # 2. Langkah memastikan versi sudah benar-benar terkunci di 8.1.1
       - name: Cek Hasil Versi FFmpeg
         run: |
           ffmpeg -version
 
-      # 3. Menjalankan proses streaming dengan logika layering Anda
+      # 3. Menjalankan proses streaming dengan logika layering
       - name: Jalankan Live Streaming Layering
         env:
           VIDEO: ${{ github.event.inputs.video_source }}
@@ -73,3 +74,4 @@ jobs:
             -pix_fmt yuv420p -g 60 \
             -c:a aac -b:a 128k \
             -f flv "$SERVER/$KEY"
+            
