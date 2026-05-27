@@ -1,120 +1,128 @@
-name: STREAMER FFMPEG ULTIMATE BOX
+name: STREAMER FFMPEG ALL-IN-ONE SUPERBOX
 
 on:
   workflow_dispatch:
     inputs:
       # ==========================================
-      # 1. INPUT UTAMA & KONTROL DURASI
+      # 📹 SLOT INPUT VIDEO (MAX 3) & LOOPING
       # ==========================================
-      video_source:
-        description: '1. Video Utama (.mp4 / .m3u8 / Jalur Lokal)'
+      video_1:
+        description: '▶️ VIDEO 1 (WAJIB - Video Utama Fullscreen)'
         required: true
         default: 'https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4'
       loop_video:
-        description: '2. Looping Video? (Gunakan hanya untuk file .mp4 mati)'
+        description: '🔄 Putar Ulang Semua Video Terus-Menerus (Looping)?'
         type: choice
         required: true
         default: 'tidak'
-        options:
-          - 'tidak'
-          - 'ya (looping tanpa batas)'
-      audio_source:
-        description: '3. Audio Tambahan / Musik Latar (Kosongkan jika tidak pakai)'
+        options: [tidak, ya]
+
+      video_2:
+        description: '🎞️ VIDEO 2 (Opsional - Video PIP Tambahan)'
         required: false
-      image_source:
-        description: '4. Overlay Gambar/Logo/GIF (Kosongkan jika tidak pakai)'
+      v2_layout:
+        description: '└⚙️ Posisi Video 2 (Lebar: 320px, FPS: 30)'
+        type: choice
+        required: true
+        default: 'kanan_bawah'
+        options: [kanan_bawah, kiri_bawah, kanan_atas, kiri_atas]
+
+      video_3:
+        description: '🎞️ VIDEO 3 (Opsional - Video PIP Tambahan)'
+        required: false
+      v3_layout:
+        description: '└⚙️ Posisi Video 3 (Lebar: 320px, FPS: 30)'
+        type: choice
+        required: true
+        default: 'kiri_bawah'
+        options: [kiri_bawah, kanan_bawah, kanan_atas, kiri_atas]
+
+      # ==========================================
+      # 🎵 SLOT INPUT AUDIO / MUSIC BACKGROUND (MAX 3)
+      # ==========================================
+      audio_1:
+        description: '🎵 AUDIO BACKSOUND 1 (Opsional - Musik Mixer)'
+        required: false
+      audio_2:
+        description: '🎵 AUDIO BACKSOUND 2 (Opsional - Musik Mixer)'
         required: false
 
       # ==========================================
-      # 2. PENGATURAN TATA LETAK & RESOLUSI
+      # 🖼️ SLOT INPUT GAMBAR / LOGO / GIF (MAX 3)
       # ==========================================
-      logo_width:
-        description: '5. Lebar Overlay (pixel). Isi -1 untuk ukuran asli'
+      image_1:
+        description: '🖼️ GAMBAR 1 (Opsional - Logo/Watermark/GIF Loop)'
+        required: false
+      img1_layout:
+        description: '└⚙️ Posisi Gambar 1'
+        type: choice
         required: true
-        default: '200'
-      logo_x:
-        description: '6. Posisi X Overlay (Contoh: 10, W-w-10 untuk kanan)'
+        default: 'kanan_atas'
+        options: [kanan_atas, kiri_atas, kanan_bawah, kiri_bawah]
+
+      image_2:
+        description: '🖼️ GAMBAR 2 (Opsional - Logo/Watermark/GIF Loop)'
+        required: false
+      img2_layout:
+        description: '└⚙️ Posisi Gambar 2'
+        type: choice
         required: true
-        default: 'W-w-10'
-      logo_y:
-        description: '7. Posisi Y Overlay (Contoh: 10, H-h-10 untuk bawah)'
-        required: true
-        default: '10'
+        default: 'kiri_atas'
+        options: [kiri_atas, kanan_atas, kanan_bawah, kiri_bawah]
+
+      # ==========================================
+      # 📝 SLOT INPUT TEKS / DRAWTEXT (MAX 3)
+      # ==========================================
+      text_statis_1:
+        description: '📝 TEKS BANNER STATIS (Opsional - Pojok Atas)'
+        required: false
+      text_running_1:
+        description: '🏃 RUNNING TEXT / TEKS BERJALAN (Opsional - Bawah Layar)'
+        required: false
+
+      # ==========================================
+      # 🎛️ FILTER KOREKSI KUALITAS VIDEO & PRESET
+      # ==========================================
       resolusi_output:
-        description: '8. Kunci Resolusi Akhir Siaran'
+        description: '📺 Resolusi Hasil Siaran Akhir (Paksa AR 16:9)'
         type: choice
         required: true
         default: '1280:720'
-        options:
-          - '1920:1080'
-          - '1280:720'
-          - '854:480'
-
-      # ==========================================
-      # 3. KONTROL AUDIO VIDEO EFFECT (DROPDOWN)
-      # ==========================================
+        options: ['1920:1080', '1280:720', '854:480']
       fitur_denoise:
-        description: '9. Denoise (Hilangkan Bintik Noise di Area Gelap)'
+        description: '✨ Denoise (Hilangkan Bintik Kebisingan/Gelap hqdn3d)'
         type: choice
         required: true
         default: 'matikan'
-        options:
-          - 'matikan'
-          - 'sedang (hqdn3d=4:4:6:6)'
-          - 'kuat (hqdn3d=6:6:9:9)'
+        options: [matikan, 'sedang (hqdn3d=4:4:6:6)', 'kuat (hqdn3d=6:6:9:9)']
       fitur_sharpness:
-        description: '10. Sharpness (Pertajam Garis Detail Gambar)'
+        description: '🎯 Sharpness (Pertajam Detail Garis/Teks unsharp)'
         type: choice
         required: true
         default: 'matikan'
-        options:
-          - 'matikan'
-          - 'sedang (unsharp=5:5:0.8:5:5:0.0)'
-          - 'kuat (unsharp=7:7:1.2:7:7:0.0)'
+        options: [matikan, 'sedang (unsharp=5:5:0.8:5:5:0.0)', 'kuat (unsharp=7:7:1.2:7:7:0.0)']
       video_preset:
-        description: '11. CPU Preset (Semakin cepat = semakin ringan beban server)'
+        description: '⚡ CPU Preset (Beban Kerja Server GitHub Actions)'
         type: choice
         required: true
-        default: 'veryfast'
-        options:
-          - 'ultrafast (paling ringan)'
-          - 'veryfast (standar aman)'
-          - 'medium (berat, kualitas tinggi)'
+        default: 'ultrafast'
+        options: [ultrafast, veryfast, medium]
 
       # ==========================================
-      # 4. LAPISAN TEKS DINAMIS (DRAWTEXT)
-      # ==========================================
-      text_1:
-        description: '12. Teks Statis Banner (Kosongkan jika tidak pakai)'
-        required: false
-      text_1_posisi:
-        description: '13. Posisi Teks Statis Banner'
-        type: choice
-        required: true
-        default: 'atas_kiri'
-        options:
-          - 'atas_kiri'
-          - 'atas_kanan'
-          - 'bawah_tengah'
-      text_running:
-        description: '14. Running Text / Teks Berjalan dari Kanan ke Kiri'
-        required: false
-
-      # ==========================================
-      # 5. TARGET UTAMA & TARGET CADANGAN (SIMULCAST)
+      # 🚀 TARGET RTMP (DUMMY MULTI-STREAMING / SIMULCAST)
       # ==========================================
       rtmp_url:
-        description: '15. Target 1: RTMP Server URL'
+        description: '🚀 Target 1: RTMP Server URL'
         required: true
         default: 'rtmp://a.rtmp.youtube.com/live2'
       stream_key:
-        description: '16. Target 1: Stream Key'
+        description: '🔑 Target 1: Stream Key'
         required: true
       rtmp_url_2:
-        description: '17. Target 2 (Simulcast): RTMP URL Tambahan (Kosongkan jika hanya live ke 1 tempat)'
+        description: '🚀 Target 2 (Simulcast): RTMP URL Tambahan (Maks 2 Akun)'
         required: false
       stream_key_2:
-        description: '18. Target 2 (Simulcast): Stream Key Tambahan'
+        description: '🔑 Target 2 (Simulcast): Stream Key Tambahan'
         required: false
 
 jobs:
@@ -122,124 +130,126 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # FITUR 1: Install FFmpeg rilis stabil mayor ke-8 melalui PPA Resmi
       - name: Install FFmpeg 8 via PPA
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -qq > /dev/null
           sudo apt install -t "o=LP-PPA-ubuntuhandbook1-ffmpeg8" ffmpeg -y -qq > /dev/null
 
-      - name: Eksekusi Otomatisasi Fitur Lengkap FFmpeg
+      # FITUR 2: Cek Versi Hasil untuk Verifikasi Log Sistem
+      - name: Cek Hasil Versi FFmpeg
+        run: |
+          ffmpeg -version | head -n 1
+
+      # FITUR 3: Eksekusi Otomatisasi Logika Gabungan Seluruh Fitur (Bash Multi-Layer Engine)
+      - name: Eksekusi Multi-Input Cloud Streamer
         env:
-          VIDEO: ${{ github.event.inputs.video_source }}
-          LOOP: ${{ github.event.inputs.loop_video }}
-          AUDIO: ${{ github.event.inputs.audio_source }}
-          IMAGE: ${{ github.event.inputs.image_source }}
-          L_WIDTH: ${{ github.event.inputs.logo_width }}
-          L_X: ${{ github.event.inputs.logo_x }}
-          L_Y: ${{ github.event.inputs.logo_y }}
+          V1: ${{ github.event.inputs.video_1 }}
+          V2: ${{ github.event.inputs.video_2 }}
+          V2_LAY: ${{ github.event.inputs.v2_layout }}
+          V3: ${{ github.event.inputs.video_3 }}
+          V3_LAY: ${{ github.event.inputs.v3_layout }}
+          A1: ${{ github.event.inputs.audio_1 }}
+          A2: ${{ github.event.inputs.audio_2 }}
+          I1: ${{ github.event.inputs.image_1 }}
+          I1_LAY: ${{ github.event.inputs.img1_layout }}
+          I2: ${{ github.event.inputs.image_2 }}
+          I2_LAY: ${{ github.event.inputs.img2_layout }}
+          TXT_S: ${{ github.event.inputs.text_statis_1 }}
+          TXT_R: ${{ github.event.inputs.text_running_1 }}
+          LOOP: ${{ github.event.inputs.loop_all }}
           RES: ${{ github.event.inputs.resolusi_output }}
           DENOISE: ${{ github.event.inputs.fitur_denoise }}
           SHARP: ${{ github.event.inputs.fitur_sharpness }}
           PRESET: ${{ github.event.inputs.video_preset }}
-          TXT1: ${{ github.event.inputs.text_1 }}
-          TXT1_POS: ${{ github.event.inputs.text_1_posisi }}
-          TXTRUN: ${{ github.event.inputs.text_running }}
           SERVER1: ${{ github.event.inputs.rtmp_url }}
           KEY1: ${{ github.event.inputs.stream_key }}
           SERVER2: ${{ github.event.inputs.rtmp_url_2 }}
           KEY2: ${{ github.event.inputs.stream_key_2 }}
         run: |
-          # ------------------------------------------
-          # PARSING INPUT ARGUMENTS & DETEKSI FORMAT
-          # ------------------------------------------
-          V_FLAG=""
-          if [[ "$LOOP" == *"ya"* ]]; then V_FLAG="-stream_loop -1"; fi
+          # A. KONTROL FITUR LOOPING UTAMA
+          L_FLAG=""
+          if [[ "$LOOP" == "ya" ]]; then L_FLAG="-stream_loop -1"; fi
+          
+          INPUT_ARGS="$L_FLAG -re -i $V1"
+          NEXT_IDX=1
+          
+          V2_IDX=""; V3_IDX=""; I1_IDX=""; I2_IDX=""; A1_IDX=""; A2_IDX=""
 
-          if [[ "$IMAGE" == *.gif ]]; then
-            INPUT_ARGS="$V_FLAG -re -i $VIDEO -ignore_loop 0 -i $IMAGE"
-          elif [ ! -z "$IMAGE" ]; then
-            INPUT_ARGS="$V_FLAG -re -i $VIDEO -i $IMAGE"
-          else
-            INPUT_ARGS="$V_FLAG -re -i $VIDEO"
+          # B. PENATAAN STRUKTUR INPUT MULTI-MEDIA SECARA DINAMIS
+          if [ ! -z "$V2" ]; then INPUT_ARGS="$INPUT_ARGS $L_FLAG -re -i $V2"; V2_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
+          if [ ! -z "$V3" ]; then INPUT_ARGS="$INPUT_ARGS $L_FLAG -re -i $V3"; V3_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
+          
+          if [ ! -z "$I1" ]; then 
+            G_FLAG=""; if [[ "$I1" == *.gif ]]; then G_FLAG="-ignore_loop 0"; fi
+            INPUT_ARGS="$INPUT_ARGS $G_FLAG -i $I1"; I1_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1))
+          fi
+          if [ ! -z "$I2" ]; then 
+            G_FLAG=""; if [[ "$I2" == *.gif ]]; then G_FLAG="-ignore_loop 0"; fi
+            INPUT_ARGS="$INPUT_ARGS $G_FLAG -i $I2"; I2_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1))
           fi
 
-          if [ ! -z "$AUDIO" ]; then INPUT_ARGS="$INPUT_ARGS -i $AUDIO"; fi
+          if [ ! -z "$A1" ]; then INPUT_ARGS="$INPUT_ARGS -i $A1"; A1_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
+          if [ ! -z "$A2" ]; then INPUT_ARGS="$INPUT_ARGS -i $A2"; A2_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
 
-          # PARSING PRESET CPU
-          MY_PRESET="veryfast"
-          if [[ "$PRESET" == *"ultrafast"* ]]; then MY_PRESET="ultrafast"; fi
-          if [[ "$PRESET" == *"medium"* ]]; then MY_PRESET="medium"; fi
-
-          # ------------------------------------------
-          # CONSTRUCT VIDEO FILTERS MAP (V_FILTERS)
-          # ------------------------------------------
-          V_FILTERS="scale=$RES,setsar=1,setdar=16/9"
+          # C. PROSES PENYUSUNAN FITUR KOREKSI GAMBAR BASE (KUNCI FPS = 30 + ASPECT RATIO 16:9)
+          V_FILTERS="scale=$RES,fps=30,setsar=1,setdar=16/9"
           if [[ "$DENOISE" == *"sedang"* ]]; then V_FILTERS="$V_FILTERS,hqdn3d=4:4:6:6"; fi
           if [[ "$DENOISE" == *"kuat"* ]]; then V_FILTERS="$V_FILTERS,hqdn3d=6:6:9:9"; fi
           if [[ "$SHARP" == *"sedang"* ]]; then V_FILTERS="$V_FILTERS,unsharp=5:5:0.8:5:5:0.0"; fi
           if [[ "$SHARP" == *"kuat"* ]]; then V_FILTERS="$V_FILTERS,unsharp=7:7:1.2:7:7:0.0"; fi
 
-          # BUILD FILTER COMPLEX LAYERING STRATEGY
-          FILTER_COMPLEX="[0:v]$V_FILTERS[v_dasar];"
-          CURRENT_V_STREAM="[v_dasar]"
+          FILTER_COMPLEX="[0:v]$V_FILTERS[v_base];"
+          CURRENT_V="[v_base]"
 
-          # Layering Logo/Gambar
-          if [ ! -z "$IMAGE" ]; then
-            FILTER_COMPLEX="${FILTER_COMPLEX}[1:v]scale=${L_WIDTH}:-1[logo];$CURRENT_V_STREAM[logo]overlay=x=${L_X}:y=${L_Y}:shortest=1[v_overlay];"
-            CURRENT_V_STREAM="[v_overlay]"
+          # HELPER FUNGSI MENGHITUNG TATA LETAK KOORDINAT
+          get_coords() {
+            if [ "$1" = "kanan_bawah" ]; then echo "x=W-w-10:y=H-h-10";
+            elif [ "$1" = "kiri_bawah" ]; then echo "x=10:y=H-h-10";
+            elif [ "$1" = "kanan_atas" ]; then echo "x=W-w-10:y=10";
+            else echo "x=10:y=10"; fi
+          }
+
+          # D. PROSES LAYER VIDEO PIP (DIPAKSA 30 FPS BIAR SINKRON)
+          if [ ! -z "$V2_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$V2_IDX:v]scale=320:-1,fps=30[v2_s];$CURRENT_V[v2_s]overlay=$(get_coords '$V2_LAY'):shortest=1[lv2];"; CURRENT_V="[lv2]"; fi
+          if [ ! -z "$V3_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$V3_IDX:v]scale=320:-1,fps=30[v3_s];$CURRENT_V[v3_s]overlay=$(get_coords '$V3_LAY'):shortest=1[lv3];"; CURRENT_V="[lv3]"; fi
+
+          # E. PROSES LAYER OVERLAY GAMBAR / LOGO / GIF ANIMASI
+          if [ ! -z "$I1_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$I1_IDX:v]scale=180:-1[img1];$CURRENT_V[img1]overlay=$(get_coords '$I1_LAY'):shortest=1[li1];"; CURRENT_V="[li1]"; fi
+          if [ ! -z "$I2_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$I2_IDX:v]scale=180:-1[img2];$CURRENT_V[img2]overlay=$(get_coords '$I2_LAY'):shortest=1[li2];"; CURRENT_V="[li2]"; fi
+
+          # F. PROSES LAYER DRAWTEXT (TEKS STATIS BANNER)
+          if [ ! -z "$TXT_S" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V""drawtext=text='$TXT_S':x=20:y=20:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5[ltxts];"; CURRENT_V="[ltxts]"; fi
+
+          # G. PROSES LAYER DRAWTEXT (RUNNING TEXT BERJALAN DINAMIS)
+          if [ ! -z "$TXT_R" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V""drawtext=text='$TXT_R':x=W-mod(t*100\,W+tw):y=H-th-15:fontsize=24:fontcolor=yellow:box=1:boxcolor=black@0.6[ltxtr];"; CURRENT_V="[ltxtr]"
           fi
+          FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V""split[v_final]"
 
-          # Layering Teks Statis
-          if [ ! -z "$TXT1" ]; then
-            if [ "$TXT1_POS" = "atas_kiri" ]; then T_X="10"; T_Y="10";
-            elif [ "$TXT1_POS" = "atas_kanan" ]; then T_X="W-tw-10"; T_Y="10";
-            else T_X="(W-tw)/2"; T_Y="H-th-50"; fi
-            FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V_STREAM""drawtext=text='$TXT1':x=$T_X:y=$T_Y:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5[v_txt1];"
-            CURRENT_V_STREAM="[v_txt1]"
-          fi
+          # H. PROSES FILTER AUDIO MIXER & AKSELERASI ANTI-DESYNC PERMANEN (aresample=async=1)
+          AUDIO_INPUTS="[0:a]aresample=async=1[a_init];[a_init]"
+          AUDIO_COUNT=1
+          if [ ! -z "$A1_IDX" ]; then AUDIO_INPUTS="$AUDIO_INPUTS[$A1_IDX:a]"; AUDIO_COUNT=$((AUDIO_COUNT + 1)); fi
+          if [ ! -z "$A2_IDX" ]; then AUDIO_INPUTS="$AUDIO_INPUTS[$A2_IDX:a]"; AUDIO_COUNT=$((AUDIO_COUNT + 1)); fi
 
-          # Layering Teks Berjalan
-          if [ ! -z "$TXTRUN" ]; then
-            FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V_STREAM""drawtext=text='$TXTRUN':x=W-mod(t*100\,W+tw):y=H-th-10:fontsize=24:fontcolor=yellow:box=1:boxcolor=black@0.6[v_txtrun];"
-            CURRENT_V_STREAM="[v_txtrun]"
-          fi
-          FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V_STREAM""split[v_final]"
+          FILTER_COMPLEX="${FILTER_COMPLEX};$AUDIO_INPUTS""amix=inputs=$AUDIO_COUNT:duration=first:dropout_transition=2[a_final]"
 
-          # ------------------------------------------
-          # CONSTRUCT AUDIO FILTER & ANTI-DESYNC MAP
-          # ------------------------------------------
-          # Menggunakan aresample=async=1 untuk menjaga sinkronisasi audio-video di internet dinamis
-          if [ ! -z "$AUDIO" ]; then
-            FILTER_COMPLEX="${FILTER_COMPLEX};[0:a]aresample=async=1[a_sync];[a_sync][2:a]amix=inputs=2:duration=first[a_final]"
-            MAP_ARGS="-map [v_final] -map [a_final]"
-          else
-            FILTER_COMPLEX="${FILTER_COMPLEX};[0:a]aresample=async=1[a_final]"
-            MAP_ARGS="-map [v_final] -map [a_final]"
-          fi
-
-          # ------------------------------------------
-          # CONFIGURATION MULTI-STREAM TARGET (TEE MUXER)
-          # ------------------------------------------
-          # Penyelamat jaringan bawaan: rw_timeout & drop_pkts_on_overflow diaktifkan otomatis
+          # I. FITUR MULTI-STREAMING TARGET (TEE MUXER LOGIC) & PENYELAMAT DROPOUT JARINGAN
           URL_1="$SERVER1/$KEY1"
           TARGET_OUTPUT=""
-
           if [ ! -z "$SERVER2" ] && [ ! -z "$KEY2" ]; then
             URL_2="$SERVER2/$KEY2"
-            echo "Mode Aktif: MULTI-STREAMING (SIMULCAST) KE 2 PLATFORM!"
             TARGET_OUTPUT="-f tee [f=flv:flvflags=no_duration_filesize]$URL_1|[f=flv:flvflags=no_duration_filesize]$URL_2"
           else
-            echo "Mode Aktif: SINGLE STREAMING STANDARD."
             TARGET_OUTPUT="-f flv -flvflags no_duration_filesize $URL_1"
           fi
 
-          # ------------------------------------------
-          # RUNNING CORES COMMAND FFMPEG ENGINE
-          # ------------------------------------------
+          # J. EKSEKUSI MESIN UTAMA FFMPEG DENGAN KONTROL OVERFLOW MEMORI (-drop_pkts_on_overflow 1)
           ffmpeg -y -drop_pkts_on_overflow 1 $INPUT_ARGS \
             -filter_complex "$FILTER_COMPLEX" \
-            $MAP_ARGS \
-            -c:v libx264 -preset $MY_PRESET -b:v 3000k -maxrate 3000k -bufsize 6000k \
+            -map "[v_final]" -map "[a_final]" \
+            -c:v libx264 -preset $PRESET -b:v 3000k -maxrate 3000k -bufsize 6000k \
             -pix_fmt yuv420p -g 60 -async 1 \
             -c:a aac -b:a 128k \
             $TARGET_OUTPUT
