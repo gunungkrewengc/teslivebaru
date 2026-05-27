@@ -49,8 +49,8 @@ on:
         description: '📺 [Geometri] Resolusi Skala Output Akhir (scale)'
         type: choice
         required: true
-        default: '1280:720'
-        options: ['1920:1080', '1280:720', '854:480', '640:360']
+        default: 'ikuti_video_input'
+        options: ['ikuti_video_input', '1920:1080', '1280:720', '854:480', '640:360']
       v_fps:
         description: '🎞️ [Geometri] Kunci Kecepatan Frame Rate Per Detik (fps)'
         type: choice
@@ -253,7 +253,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # METODE INSTALASI: PPA Ubuntuhandbook1 untuk Menjamin Ketersediaan Binari FFmpeg 8 Asli
       - name: Jalankan PPA Dan Pasang FFmpeg 8 Resmi
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
@@ -266,7 +265,6 @@ jobs:
 
       - name: Eksekusi Core Engine Pemancar Cloud Raksasa
         env:
-          # PEMETAAN LENGKAP VARIABEL VARIABEL UI KE ENGINE BASH
           V1: ${{ github.event.inputs.video_1 }}
           V2: ${{ github.event.inputs.video_2 }}
           I1: ${{ github.event.inputs.image_1 }}
@@ -315,9 +313,7 @@ jobs:
           SERVER2: ${{ github.event.inputs.rtmp_url_2 }}
           KEY2: ${{ github.event.inputs.stream_key_2 }}
         run: |
-          # --------------------------------------------------------------------
-          # STRUKTUR 1: INTERPRETER PARAMETER DEMUXER INPUT
-          # --------------------------------------------------------------------
+          # 1. PARAMETER DEMUXER INPUT
           DEMUX_FLAGS=""
           if [ "$IN_RE" = "ya" ]; then DEMUX_FLAGS="$DEMUX_FLAGS -re"; fi
           if [ "$IN_LOOP" = "ya" ]; then DEMUX_FLAGS="-stream_loop -1 $DEMUX_FLAGS"; fi
@@ -326,7 +322,6 @@ jobs:
           NEXT_IDX=1
           V2_IDX=""; I1_IDX=""; ABACK_IDX=""
 
-          # Penyeleksian Slot Jalur Input Secara Sekuensial Berurutan
           if [ ! -z "$V2" ]; then INPUT_COMMAND="$INPUT_COMMAND $DEMUX_FLAGS -i $V2"; V2_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
           if [ ! -z "$I1" ]; then
             GIF_FLAGS=""
@@ -335,10 +330,15 @@ jobs:
           fi
           if [ ! -z "$ABACK" ]; then INPUT_COMMAND="$INPUT_COMMAND -i $ABACK"; ABACK_IDX=$NEXT_IDX; fi
 
-          # --------------------------------------------------------------------
-          # STRUKTUR 2: FILTER KANVAS UTAMA VIDEO LAYER [0:v] (-vf PIPELINE)
-          # --------------------------------------------------------------------
-          V_CORE_PIPE="scale=$V_RES,fps=$V_FPS,setsar=1,setdar=$V_ASP,eq=brightness=$C_BRIGHT:contrast=$C_CONT:saturation=$C_SAT:gamma=$C_GAM"
+          # 2. LOGIKA BYPASS SCALE (RESOLUSI DEFAULT ASLI VIDEO INPUT)
+          # Jika diatur ke 'ikuti_video_input', kita ganti perintah scale menjadi scale=iw:ih (lebar & tinggi input asli)
+          FINAL_SCALE="$V_RES"
+          if [ "$V_RES" = "ikuti_video_input" ]; then
+            FINAL_SCALE="iw:ih"
+          fi
+
+          # 3. FILTER KANVAS UTAMA VIDEO LINE PIPELINE
+          V_CORE_PIPE="scale=$FINAL_SCALE,fps=$V_FPS,setsar=1,setdar=$V_ASP,eq=brightness=$C_BRIGHT:contrast=$C_CONT:saturation=$C_SAT:gamma=$C_GAM"
           
           if [ ! -z "$V_CROP" ]; then V_CORE_PIPE="$V_CORE_PIPE,crop=$V_CROP"; fi
           if [ ! -z "$V_PAD" ]; then V_CORE_PIPE="$V_CORE_PIPE,pad=$V_PAD"; fi
@@ -359,7 +359,6 @@ jobs:
           FILTER_COMPLEX="[0:v]$V_CORE_PIPE[v_base_canvas];"
           CURRENT_V_ANCHOR="[v_base_canvas]"
 
-          # PARSER ATURAN KOORDINAT SPASIAL OVERLAY
           calculate_layout() {
             if [ "$1" = "kanan_bawah" ]; then echo "x=W-w-10:y=H-h-10";
             elif [ "$1" = "kiri_bawah" ]; then echo "x=10:y=H-h-10";
@@ -368,24 +367,18 @@ jobs:
             else echo "x=10:y=10"; fi
           }
 
-          # --------------------------------------------------------------------
-          # STRUKTUR 3: FILTER MATRIKS KOMPOSIT (MULTI-LAYER OVERLAY STACK)
-          # --------------------------------------------------------------------
-          # Pemrosesan Gabungan Komposit Video PIP 2
+          # 4. MULTI-LAYER OVERLAY STACK
           if [ ! -z "$V2_IDX" ]; then
             FILTER_COMPLEX="${FILTER_COMPLEX}[$V2_IDX:v]scale=${V2_W}:-1,fps=$V_FPS,format=rgba,colorchannelmixer=aa=${V2_OP}[v2_processed];$CURRENT_V_ANCHOR[v2_processed]overlay=$(calculate_layout '$V2_LAY_POS'):shortest=1[v_layer_pip];"
             CURRENT_V_ANCHOR="[v_layer_pip]"
           fi
 
-          # Pemrosesan Gabungan Komposit Gambar Logo 1
           if [ ! -z "$I1_IDX" ]; then
             FILTER_COMPLEX="${FILTER_COMPLEX}[$I1_IDX:v]scale=${I1_W}:-1,format=rgba,colorchannelmixer=aa=$I1_OP[img1_processed];$CURRENT_V_ANCHOR[img1_processed]overlay=$(calculate_layout '$I1_LAY_POS'):shortest=1[v_layer_img];"
             CURRENT_V_ANCHOR="[v_layer_img]"
           fi
 
-          # --------------------------------------------------------------------
-          # STRUKTUR 4: ATURAN RENDER TEXT LAYER INTERIOR (DRAWTEXT)
-          # --------------------------------------------------------------------
+          # 5. DRAWTEXT METADATA ENGINE
           T_BOX_FLAG="0"
           if [ "$T_BOX" = "ya" ]; then T_BOX_FLAG="1"; fi
 
@@ -403,9 +396,7 @@ jobs:
           fi
           FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V_ANCHOR""split[v_final_output]"
 
-          # --------------------------------------------------------------------
-          # STRUKTUR 5: MATRIKS ROUTING FILTER AUDIO ENGINE
-          # --------------------------------------------------------------------
+          # 6. ROUTING FILTER AUDIO ENGINE
           A_PIPE="volume=$A_VOL1"
           if [ "$A_SYNC" = "aktif" ]; then A_PIPE="$A_PIPE,aresample=async=1"; fi
           if [ "$A_HP" != "0" ]; then A_PIPE="$A_PIPE,highpass=f=$A_HP"; fi
@@ -420,9 +411,7 @@ jobs:
             MAP_COMMAND="-map [v_final_output] -map [a_main_stream]"
           fi
 
-          # --------------------------------------------------------------------
-          # STRUKTUR 6: MANAGEMEN MULTI-TARGET MUXING TRANSMISI JARINGAN (TEE)
-          # --------------------------------------------------------------------
+          # 7. MULTI-TARGET MUXING TRANSMISI JARINGAN (TEE)
           GLOBAL_FLAGS=""
           if [ "$N_DROP" = "ya" ]; then GLOBAL_FLAGS="-drop_pkts_on_overflow 1"; fi
 
@@ -436,9 +425,7 @@ jobs:
             MUXER_COMMAND="-f flv -flvflags no_duration_filesize $URL_MASTER"
           fi
 
-          # ========================================================================
-          # 🔥 RUNTIME EXECUTION CORES GABUNGAN PARALEL ENGINE FFmpeg 8
-          # ========================================================================
+          # 8. RUNTIME EXECUTION final
           ffmpeg -y $GLOBAL_FLAGS $INPUT_COMMAND \
             -filter_complex "$FILTER_COMPLEX" \
             $MAP_COMMAND \
