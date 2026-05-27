@@ -26,14 +26,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Setup FFmpeg dan mengunci langsung ke versi stabil paling terbaru (8.1.1)
-      - name: Setup FFmpeg 8.1.1 Terbaru
+      # 1. Setup FFmpeg menggunakan trik git-master untuk mendapatkan versi 8+ secara instan
+      - name: Setup FFmpeg 8 (Git Master)
         uses: FedericoCarboni/setup-ffmpeg@v3
         with:
-          ffmpeg-version: '8.1.1'
+          ffmpeg-version: 'git-master'
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 2. Langkah memastikan versi sudah benar-benar terkunci di 8.1.1
+      # 2. Langkah memastikan versi FFmpeg 8 sudah aktif di log
       - name: Cek Hasil Versi FFmpeg
         run: |
           ffmpeg -version
