@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       # ==========================================
-      # 📹 SLOT INPUT VIDEO (MAX 3) & LOOPING
+      # 📹 SLOT INPUT UTAMA & LOOPING
       # ==========================================
       video_1:
         description: '▶️ VIDEO 1 (WAJIB - Video Utama Fullscreen)'
@@ -17,100 +17,151 @@ on:
         default: 'tidak'
         options: [tidak, ya]
 
+      # ==========================================
+      # 🎛️ MENU 1: FILTER GEOMETRI & TRANSFORMASI VIDEO (-vf)
+      # ==========================================
+      v_resolusi:
+        description: '📺 [Video] Ukuran/Resolusi Output Akhir (scale)'
+        type: choice
+        required: true
+        default: '1280:720'
+        options: ['1920:1080', '1280:720', '854:480', '640:360']
+      v_fps:
+        description: '🎞️ [Video] Kunci Frame Rate (fps)'
+        type: choice
+        required: true
+        default: '30'
+        options: ['30', '60', '25', '24']
+      v_crop:
+        description: '✂️ [Video] Potong Area Video (crop=w:h:x:y) - Kosongkan jika tidak pakai'
+        required: false
+      v_pad:
+        description: '🔲 [Video] Tambah Bingkai Hitam (pad=w:h:x:y) - Kosongkan jika tidak pakai'
+        required: false
+      v_transpose:
+        description: '🔄 [Video] Putar Arah Video (transpose)'
+        type: choice
+        required: true
+        default: 'normal'
+        options: [normal, '90_derajat_searah', '90_derajat_berlawanan', '180_derajat']
+      v_mirror:
+        description: '🪞 [Video] Efek Cermin / Balik Gambar (hflip/vflip)'
+        type: choice
+        required: true
+        default: 'normal'
+        options: [normal, 'horizontal_kiri_kanan (hflip)', 'vertikal_atas_bawah (vflip)']
+      v_speed:
+        description: '🏃‍♂️ [Video] Kecepatan Putar Video (setpts)'
+        type: choice
+        required: true
+        default: '1.0x (Normal)'
+        options: ['1.0x (Normal)', '2.0x (Dipercepat)', '0.5x (Slowmotion)']
+
+      # ==========================================
+      # 🎨 MENU 2: FILTER KOREKSI WARNA & KUALITAS VISUAL
+      # ==========================================
+      v_brightness:
+        description: '☀️ [Warna] Kecerahan Layar (eq brightness: -1.0 s/d 1.0)'
+        required: true
+        default: '0.0'
+      v_contrast:
+        description: '🌗 [Warna] Kontras Layar (eq contrast: -2.0 s/d 2.0)'
+        required: true
+        default: '1.0'
+      v_saturation:
+        description: '🌈 [Warna] Kejenuhan Warna (eq saturation: 0.0 s/d 3.0)'
+        required: true
+        default: '1.0'
+      v_denoise:
+        description: '✨ [Kualitas] Hilangkan Bintik Kebisingan/Gelap (hqdn3d)'
+        type: choice
+        required: true
+        default: 'matikan'
+        options: [matikan, 'sedang (4:4:6:6)', 'kuat (6:6:9:9)']
+      v_sharpness:
+        description: '🎯 [Kualitas] Pertajam Detail Garis/Pixel (unsharp)'
+        type: choice
+        required: true
+        default: 'matikan'
+        options: [matikan, 'sedang (5:5:0.8)', 'kuat (7:7:1.2)']
+      v_delogo:
+        description: '🧽 [Kualitas] Sensor/Hapus Watermark Bawaan (delogo=x:y:w:h) - Kosongkan jika tidak pakai'
+        required: false
+
+      # ==========================================
+      # 🎞️ MENU 3: SLOT MULTI-VIDEO (PICTURE-IN-PICTURE)
+      # ==========================================
       video_2:
         description: '🎞️ VIDEO 2 (Opsional - Video PIP Tambahan)'
         required: false
       v2_layout:
-        description: '└⚙️ Posisi Video 2 (Lebar: 320px, FPS: 30)'
+        description: '└⚙️ Posisi & Ukuran Video 2 (Lebar: 320px)'
         type: choice
         required: true
         default: 'kanan_bawah'
         options: [kanan_bawah, kiri_bawah, kanan_atas, kiri_atas]
 
-      video_3:
-        description: '🎞️ VIDEO 3 (Opsional - Video PIP Tambahan)'
-        required: false
-      v3_layout:
-        description: '└⚙️ Posisi Video 3 (Lebar: 320px, FPS: 30)'
-        type: choice
-        required: true
-        default: 'kiri_bawah'
-        options: [kiri_bawah, kanan_bawah, kanan_atas, kiri_atas]
-
       # ==========================================
-      # 🎵 SLOT INPUT AUDIO / MUSIC BACKGROUND (MAX 3)
-      # ==========================================
-      audio_1:
-        description: '🎵 AUDIO BACKSOUND 1 (Opsional - Musik Mixer)'
-        required: false
-      audio_2:
-        description: '🎵 AUDIO BACKSOUND 2 (Opsional - Musik Mixer)'
-        required: false
-
-      # ==========================================
-      # 🖼️ SLOT INPUT GAMBAR / LOGO / GIF (MAX 3)
+      # 🖼️ MENU 4: FILTER SELEKSI & TATA LETAK GAMBAR / LOGO / GIF
       # ==========================================
       image_1:
-        description: '🖼️ GAMBAR 1 (Opsional - Logo/Watermark/GIF Loop)'
+        description: '🖼️ GAMBAR 1 (Opsional - Logo/Watermark/GIF)'
         required: false
       img1_layout:
-        description: '└⚙️ Posisi Gambar 1'
+        description: '└⚙️ Posisi Gambar 1 (Lebar: 180px)'
         type: choice
         required: true
         default: 'kanan_atas'
         options: [kanan_atas, kiri_atas, kanan_bawah, kiri_bawah]
-
-      image_2:
-        description: '🖼️ GAMBAR 2 (Opsional - Logo/Watermark/GIF Loop)'
-        required: false
-      img2_layout:
-        description: '└⚙️ Posisi Gambar 2'
-        type: choice
+      img1_opacity:
+        description: '└⚙️ Transparansi Gambar 1 (aa=0.0 transparan s/d 1.0 pekat)'
         required: true
-        default: 'kiri_atas'
-        options: [kiri_atas, kanan_atas, kanan_bawah, kiri_bawah]
+        default: '1.0'
 
       # ==========================================
-      # 📝 SLOT INPUT TEKS / DRAWTEXT (MAX 3)
+      # 📝 MENU 5: LAYER CONTROL DRAWTEXT (TEKS BANNER & RUNNING)
       # ==========================================
       text_statis_1:
-        description: '📝 TEKS BANNER STATIS (Opsional - Pojok Atas)'
+        description: '📝 TEKS BANNER STATIS (Opsional)'
         required: false
       text_running_1:
-        description: '🏃 RUNNING TEXT / TEKS BERJALAN (Opsional - Bawah Layar)'
+        description: '🏃 RUNNING TEXT / TEKS BERJALAN (Opsional)'
         required: false
+      text_color:
+        description: '🎨 Warna Font Teks (white, yellow, red, green, cyan)'
+        required: true
+        default: 'white'
 
       # ==========================================
-      # 🎛️ FILTER KOREKSI KUALITAS VIDEO & PRESET
+      # 🎵 MENU 6: FILTER AUDIO (MIXER, LOUDNES, FREKUENSI)
       # ==========================================
-      resolusi_output:
-        description: '📺 Resolusi Hasil Siaran Akhir (Paksa AR 16:9)'
+      audio_backsound:
+        description: '🎵 AUDIO TAMBAHAN (Opsional - Musik Mixer Backsound)'
+        required: false
+      a_volume_utama:
+        description: '🔊 [Audio] Volume Suara Video Utama (1.0 = normal, 2.0 = 2x lipat)'
+        required: true
+        default: '1.0'
+      a_volume_backsound:
+        description: '🔉 [Audio] Volume Musik Backsound (0.3 = pelan/sayup)'
+        required: true
+        default: '0.3'
+      a_filter_suara:
+        description: '🎙️ [Audio] Filter Frekuensi Suara'
         type: choice
         required: true
-        default: '1280:720'
-        options: ['1920:1080', '1280:720', '854:480']
-      fitur_denoise:
-        description: '✨ Denoise (Hilangkan Bintik Kebisingan/Gelap hqdn3d)'
-        type: choice
-        required: true
-        default: 'matikan'
-        options: [matikan, 'sedang (hqdn3d=4:4:6:6)', 'kuat (hqdn3d=6:6:9:9)']
-      fitur_sharpness:
-        description: '🎯 Sharpness (Pertajam Detail Garis/Teks unsharp)'
-        type: choice
-        required: true
-        default: 'matikan'
-        options: [matikan, 'sedang (unsharp=5:5:0.8:5:5:0.0)', 'kuat (unsharp=7:7:1.2:7:7:0.0)']
+        default: 'normal'
+        options: [normal, 'potong_bass_bising (highpass=200)', 'potong_desis_tajam (lowpass=3000)']
+
+      # ==========================================
+      # 🚀 MENU TARGET BROADCAST (MULTI-STREAM/SIMULCAST)
+      # ==========================================
       video_preset:
-        description: '⚡ CPU Preset (Beban Kerja Server GitHub Actions)'
+        description: '⚡ CPU Preset (Beban Server GitHub)'
         type: choice
         required: true
         default: 'ultrafast'
         options: [ultrafast, veryfast, medium]
-
-      # ==========================================
-      # 🚀 TARGET RTMP (DUMMY MULTI-STREAMING / SIMULCAST)
-      # ==========================================
       rtmp_url:
         description: '🚀 Target 1: RTMP Server URL'
         required: true
@@ -130,80 +181,102 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # FITUR 1: Install FFmpeg rilis stabil mayor ke-8 melalui PPA Resmi
       - name: Install FFmpeg 8 via PPA
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -qq > /dev/null
           sudo apt install -t "o=LP-PPA-ubuntuhandbook1-ffmpeg8" ffmpeg -y -qq > /dev/null
 
-      # FITUR 2: Cek Versi Hasil untuk Verifikasi Log Sistem
-      - name: Cek Hasil Versi FFmpeg
-        run: |
-          ffmpeg -version | head -n 1
-
-      # FITUR 3: Eksekusi Otomatisasi Logika Gabungan Seluruh Fitur (Bash Multi-Layer Engine)
       - name: Eksekusi Multi-Input Cloud Streamer
         env:
+          # Parsing Environment Variables dari Input UI GitHub
           V1: ${{ github.event.inputs.video_1 }}
+          LOOP: ${{ github.event.inputs.loop_video }}
+          V_RES: ${{ github.event.inputs.v_resolusi }}
+          V_FPS: ${{ github.event.inputs.v_fps }}
+          V_CROP: ${{ github.event.inputs.v_crop }}
+          V_PAD: ${{ github.event.inputs.v_pad }}
+          V_TRANS: ${{ github.event.inputs.v_transpose }}
+          V_MIRR: ${{ github.event.inputs.v_mirror }}
+          V_SPEED: ${{ github.event.inputs.v_speed }}
+          V_BRIGHT: ${{ github.event.inputs.v_brightness }}
+          V_CONT: ${{ github.event.inputs.v_contrast }}
+          V_SAT: ${{ github.event.inputs.v_saturation }}
+          DENOISE: ${{ github.event.inputs.v_denoise }}
+          SHARP: ${{ github.event.inputs.v_sharpness }}
+          DELOGO: ${{ github.event.inputs.v_delogo }}
           V2: ${{ github.event.inputs.video_2 }}
           V2_LAY: ${{ github.event.inputs.v2_layout }}
-          V3: ${{ github.event.inputs.video_3 }}
-          V3_LAY: ${{ github.event.inputs.v3_layout }}
-          A1: ${{ github.event.inputs.audio_1 }}
-          A2: ${{ github.event.inputs.audio_2 }}
           I1: ${{ github.event.inputs.image_1 }}
           I1_LAY: ${{ github.event.inputs.img1_layout }}
-          I2: ${{ github.event.inputs.image_2 }}
-          I2_LAY: ${{ github.event.inputs.img2_layout }}
+          I1_OP: ${{ github.event.inputs.img1_opacity }}
           TXT_S: ${{ github.event.inputs.text_statis_1 }}
           TXT_R: ${{ github.event.inputs.text_running_1 }}
-          LOOP: ${{ github.event.inputs.loop_all }}
-          RES: ${{ github.event.inputs.resolusi_output }}
-          DENOISE: ${{ github.event.inputs.fitur_denoise }}
-          SHARP: ${{ github.event.inputs.fitur_sharpness }}
+          TXT_COL: ${{ github.event.inputs.text_color }}
+          ABACK: ${{ github.event.inputs.audio_backsound }}
+          V_VOL1: ${{ github.event.inputs.a_volume_utama }}
+          V_VOL2: ${{ github.event.inputs.a_volume_backsound }}
+          A_FILT: ${{ github.event.inputs.a_filter_suara }}
           PRESET: ${{ github.event.inputs.video_preset }}
           SERVER1: ${{ github.event.inputs.rtmp_url }}
           KEY1: ${{ github.event.inputs.stream_key }}
           SERVER2: ${{ github.event.inputs.rtmp_url_2 }}
           KEY2: ${{ github.event.inputs.stream_key_2 }}
         run: |
-          # A. KONTROL FITUR LOOPING UTAMA
+          # ==========================================
+          # 1. LOGIKA LINK INPUT DATA DINAMIS
+          # ==========================================
           L_FLAG=""
           if [[ "$LOOP" == "ya" ]]; then L_FLAG="-stream_loop -1"; fi
           
           INPUT_ARGS="$L_FLAG -re -i $V1"
           NEXT_IDX=1
-          
-          V2_IDX=""; V3_IDX=""; I1_IDX=""; I2_IDX=""; A1_IDX=""; A2_IDX=""
+          V2_IDX=""; I1_IDX=""; ABACK_IDX=""
 
-          # B. PENATAAN STRUKTUR INPUT MULTI-MEDIA SECARA DINAMIS
           if [ ! -z "$V2" ]; then INPUT_ARGS="$INPUT_ARGS $L_FLAG -re -i $V2"; V2_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
-          if [ ! -z "$V3" ]; then INPUT_ARGS="$INPUT_ARGS $L_FLAG -re -i $V3"; V3_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
-          
           if [ ! -z "$I1" ]; then 
             G_FLAG=""; if [[ "$I1" == *.gif ]]; then G_FLAG="-ignore_loop 0"; fi
             INPUT_ARGS="$INPUT_ARGS $G_FLAG -i $I1"; I1_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1))
           fi
-          if [ ! -z "$I2" ]; then 
-            G_FLAG=""; if [[ "$I2" == *.gif ]]; then G_FLAG="-ignore_loop 0"; fi
-            INPUT_ARGS="$INPUT_ARGS $G_FLAG -i $I2"; I2_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1))
-          fi
+          if [ ! -z "$ABACK" ]; then INPUT_ARGS="$INPUT_ARGS -i $ABACK"; ABACK_IDX=$NEXT_IDX; fi
 
-          if [ ! -z "$A1" ]; then INPUT_ARGS="$INPUT_ARGS -i $A1"; A1_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
-          if [ ! -z "$A2" ]; then INPUT_ARGS="$INPUT_ARGS -i $A2"; A2_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
+          # ==========================================
+          # 2. PROSES MEMBANGUN FILTER UTAMA VIDEO (-vf SEBELUM LAYERING)
+          # ==========================================
+          # Filter dasar: Skala Ukuran, FPS, Aspekt Rasio, Kecerahan, Kontras, Saturation Warna
+          V_FILTERS="scale=$V_RES,fps=$V_FPS,setsar=1,setdar=16/9,eq=brightness=$V_BRIGHT:contrast=$V_CONT:saturation=$V_SAT"
+          
+          # Cek Filter Crop & Pad manual
+          if [ ! -z "$V_CROP" ]; then V_FILTERS="$V_FILTERS,crop=$V_CROP"; fi
+          if [ ! -z "$V_PAD" ]; then V_FILTERS="$V_FILTERS,pad=$V_PAD"; fi
+          
+          # Cek Filter Transpose Rotasi
+          if [ "$V_TRANS" = "90_derajat_searah" ]; then V_FILTERS="$V_FILTERS,transpose=1";
+          elif [ "$V_TRANS" = "90_derajat_berlawanan" ]; then V_FILTERS="$V_FILTERS,transpose=2";
+          elif [ "$V_TRANS" = "180_derajat" ]; then V_FILTERS="$V_FILTERS,transpose=1,transpose=1"; fi
 
-          # C. PROSES PENYUSUNAN FITUR KOREKSI GAMBAR BASE (KUNCI FPS = 30 + ASPECT RATIO 16:9)
-          V_FILTERS="scale=$RES,fps=30,setsar=1,setdar=16/9"
+          # Cek Filter Mirroring
+          if [[ "$V_MIRR" == *"hflip"* ]]; then V_FILTERS="$V_FILTERS,hflip"; fi
+          if [[ "$V_MIRR" == *"vflip"* ]]; then V_FILTERS="$V_FILTERS,vflip"; fi
+
+          # Cek Filter Speed (setpts)
+          if [[ "$V_SPEED" == *"2.0x"* ]]; then V_FILTERS="$V_FILTERS,setpts=0.5*PTS";
+          elif [[ "$V_SPEED" == *"0.5x"* ]]; then V_FILTERS="$V_FILTERS,setpts=2.0*PTS"; fi
+
+          # Cek Filter Perbaikan Kualas (Denoise / Sharpness)
           if [[ "$DENOISE" == *"sedang"* ]]; then V_FILTERS="$V_FILTERS,hqdn3d=4:4:6:6"; fi
           if [[ "$DENOISE" == *"kuat"* ]]; then V_FILTERS="$V_FILTERS,hqdn3d=6:6:9:9"; fi
           if [[ "$SHARP" == *"sedang"* ]]; then V_FILTERS="$V_FILTERS,unsharp=5:5:0.8:5:5:0.0"; fi
           if [[ "$SHARP" == *"kuat"* ]]; then V_FILTERS="$V_FILTERS,unsharp=7:7:1.2:7:7:0.0"; fi
+          
+          # Cek Filter Sensor Delogo Watermark
+          if [ ! -z "$DELOGO" ]; then V_FILTERS="$V_FILTERS,delogo=$DELOGO"; fi
 
+          # Oper filter dasar ke rangkaian awal filter kompleks
           FILTER_COMPLEX="[0:v]$V_FILTERS[v_base];"
           CURRENT_V="[v_base]"
 
-          # HELPER FUNGSI MENGHITUNG TATA LETAK KOORDINAT
+          # HELPER KOORDINAT TATA LETAK
           get_coords() {
             if [ "$1" = "kanan_bawah" ]; then echo "x=W-w-10:y=H-h-10";
             elif [ "$1" = "kiri_bawah" ]; then echo "x=10:y=H-h-10";
@@ -211,31 +284,44 @@ jobs:
             else echo "x=10:y=10"; fi
           }
 
-          # D. PROSES LAYER VIDEO PIP (DIPAKSA 30 FPS BIAR SINKRON)
-          if [ ! -z "$V2_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$V2_IDX:v]scale=320:-1,fps=30[v2_s];$CURRENT_V[v2_s]overlay=$(get_coords '$V2_LAY'):shortest=1[lv2];"; CURRENT_V="[lv2]"; fi
-          if [ ! -z "$V3_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$V3_IDX:v]scale=320:-1,fps=30[v3_s];$CURRENT_V[v3_s]overlay=$(get_coords '$V3_LAY'):shortest=1[lv3];"; CURRENT_V="[lv3]"; fi
+          # ==========================================
+          # 3. PROSES LAYER COMPOSITE (MENUMPUK PIP, GAMBAR, TEKS)
+          # ==========================================
+          # Layering Video 2 PIP
+          if [ ! -z "$V2_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$V2_IDX:v]scale=320:-1,fps=$V_FPS[v2_s];$CURRENT_V[v2_s]overlay=$(get_coords '$V2_LAY'):shortest=1[lv2];"; CURRENT_V="[lv2]"; fi
 
-          # E. PROSES LAYER OVERLAY GAMBAR / LOGO / GIF ANIMASI
-          if [ ! -z "$I1_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$I1_IDX:v]scale=180:-1[img1];$CURRENT_V[img1]overlay=$(get_coords '$I1_LAY'):shortest=1[li1];"; CURRENT_V="[li1]"; fi
-          if [ ! -z "$I2_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$I2_IDX:v]scale=180:-1[img2];$CURRENT_V[img2]overlay=$(get_coords '$I2_LAY'):shortest=1[li2];"; CURRENT_V="[li2]"; fi
+          # Layering Gambar + Kustomisasi Transparansi Opasitas (colorchannelmixer)
+          if [ ! -z "$I1_IDX" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}[$I1_IDX:v]scale=180:-1,format=rgba,colorchannelmixer=aa=$I1_OP[img1];$CURRENT_V[img1]overlay=$(get_coords '$I1_LAY'):shortest=1[li1];"; CURRENT_V="[li1]"; fi
 
-          # F. PROSES LAYER DRAWTEXT (TEKS STATIS BANNER)
-          if [ ! -z "$TXT_S" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V""drawtext=text='$TXT_S':x=20:y=20:fontsize=24:fontcolor=white:box=1:boxcolor=black@0.5[ltxts];"; CURRENT_V="[ltxts]"; fi
+          # Layering Teks Statis
+          if [ ! -z "$TXT_S" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V""drawtext=text='$TXT_S':x=20:y=20:fontsize=24:fontcolor=$TXT_COL:box=1:boxcolor=black@0.5[ltxts];"; CURRENT_V="[ltxts]"; fi
 
-          # G. PROSES LAYER DRAWTEXT (RUNNING TEXT BERJALAN DINAMIS)
-          if [ ! -z "$TXT_R" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V""drawtext=text='$TXT_R':x=W-mod(t*100\,W+tw):y=H-th-15:fontsize=24:fontcolor=yellow:box=1:boxcolor=black@0.6[ltxtr];"; CURRENT_V="[ltxtr]"
+          # Layering Teks Berjalan (Running Text Modulo Engine)
+          if [ ! -z "$TXT_R" ]; then FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V""drawtext=text='$TXT_R':x=W-mod(t*100\,W+tw):y=H-th-15:fontsize=24:fontcolor=$TXT_COL:box=1:boxcolor=black@0.6[ltxtr];"; CURRENT_V="[ltxtr]"
           fi
           FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V""split[v_final]"
 
-          # H. PROSES FILTER AUDIO MIXER & AKSELERASI ANTI-DESYNC PERMANEN (aresample=async=1)
-          AUDIO_INPUTS="[0:a]aresample=async=1[a_init];[a_init]"
-          AUDIO_COUNT=1
-          if [ ! -z "$A1_IDX" ]; then AUDIO_INPUTS="$AUDIO_INPUTS[$A1_IDX:a]"; AUDIO_COUNT=$((AUDIO_COUNT + 1)); fi
-          if [ ! -z "$A2_IDX" ]; then AUDIO_INPUTS="$AUDIO_INPUTS[$A2_IDX:a]"; AUDIO_COUNT=$((AUDIO_COUNT + 1)); fi
+          # ==========================================
+          # 4. PROSES AUDIO FILTERS & INTERIOR MIXER
+          # ==========================================
+          # Pembersihan & Penyelarasan ketukan awal audio utama (volume & aresample)
+          A_MAIN_FILT="volume=$V_VOL1,aresample=async=1"
+          if [ "$A_FILT" = "potong_bass_bising" ]; then A_MAIN_FILT="$A_MAIN_FILT,highpass=f=200"; fi
+          if [ "$A_FILT" = "potong_desis_tajam" ]; then A_MAIN_FILT="$A_MAIN_FILT,lowpass=f=3000"; fi
+          
+          FILTER_COMPLEX="${FILTER_COMPLEX};[0:a]$A_MAIN_FILT[a_main_ready]"
 
-          FILTER_COMPLEX="${FILTER_COMPLEX};$AUDIO_INPUTS""amix=inputs=$AUDIO_COUNT:duration=first:dropout_transition=2[a_final]"
+          # Logic Audio Mixer (amix) jika Backsound diisi
+          if [ ! -z "$ABACK_IDX" ]; then
+            FILTER_COMPLEX="${FILTER_COMPLEX};[$ABACK_IDX:a]volume=$V_VOL2[a_back_ready];[a_main_ready][a_back_ready]amix=inputs=2:duration=first:dropout_transition=2[a_final]"
+            MAP_ARGS="-map [v_final] -map [a_final]"
+          else
+            MAP_ARGS="-map [v_final] -map [a_main_ready]"
+          fi
 
-          # I. FITUR MULTI-STREAMING TARGET (TEE MUXER LOGIC) & PENYELAMAT DROPOUT JARINGAN
+          # ==========================================
+          # 5. CONFIG MULTI-STREAMING TARGET OUT & RUNNING
+          # ==========================================
           URL_1="$SERVER1/$KEY1"
           TARGET_OUTPUT=""
           if [ ! -z "$SERVER2" ] && [ ! -z "$KEY2" ]; then
@@ -245,12 +331,12 @@ jobs:
             TARGET_OUTPUT="-f flv -flvflags no_duration_filesize $URL_1"
           fi
 
-          # J. EKSEKUSI MESIN UTAMA FFMPEG DENGAN KONTROL OVERFLOW MEMORI (-drop_pkts_on_overflow 1)
+          # Eksekusi Final Engine FFmpeg 8 dengan Anti-Overflow Memori
           ffmpeg -y -drop_pkts_on_overflow 1 $INPUT_ARGS \
             -filter_complex "$FILTER_COMPLEX" \
-            -map "[v_final]" -map "[a_final]" \
+            $MAP_ARGS \
             -c:v libx264 -preset $PRESET -b:v 3000k -maxrate 3000k -bufsize 6000k \
-            -pix_fmt yuv420p -g 60 -async 1 \
+            -pix_fmt yuv420p -g $((V_FPS * 2)) -async 1 \
             -c:a aac -b:a 128k \
             $TARGET_OUTPUT
             
