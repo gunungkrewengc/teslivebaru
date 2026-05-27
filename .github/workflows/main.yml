@@ -1,38 +1,81 @@
-name: LIVESTREAM FFMPEG
+name: LIVESTREAM FFMPEG MULTI-LAYER
 
 on:
   workflow_dispatch:
     inputs:
-      input_source:
-        description: 'URL Sumber Video (bisa link .mp4, .m3u8, atau file)'
+      video_source:
+        description: '1. URL/File Video Utama'
         required: true
-        default: 'https://example.com/video.mp4'
-      stream_key:
-        description: 'Masukkan Stream Key baru di sini'
-        required: true
+        default: 'https://example.com/main_video.mp4'
+      audio_source:
+        description: '2. URL/File Audio Tambahan (Kosongkan jika tidak pakai)'
+        required: false
+      image_source:
+        description: '3. URL Gambar Overlay/Logo (Kosongkan jika tidak pakai)'
+        required: false
       rtmp_url:
-        description: 'RTMP Server URL (misal: rtmp://a.rtmp.youtube.com/live2)'
+        description: '4. RTMP Server URL'
         required: true
         default: 'rtmp://a.rtmp.youtube.com/live2'
+      stream_key:
+        description: '5. Stream Key'
+        required: true
 
 jobs:
   live-streaming:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Install FFmpeg
+      - name: Install FFmpeg 7
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 -y > /dev/null
           sudo apt update -qq > /dev/null
           sudo apt install ffmpeg -y -qq > /dev/null
 
-      - name: Start Stream
+      - name: Jalankan Live Streaming Layering
         env:
-          SOURCE: ${{ github.event.inputs.input_source }}
-          KEY: ${{ github.event.inputs.stream_key }}
+          VIDEO: ${{ github.event.inputs.video_source }}
+          AUDIO: ${{ github.event.inputs.audio_source }}
+          IMAGE: ${{ github.event.inputs.image_source }}
           SERVER: ${{ github.event.inputs.rtmp_url }}
+          KEY: ${{ github.event.inputs.stream_key }}
         run: |
-          # Perintah ini akan otomatis menggunakan variabel yang Anda isi tadi
-          ffmpeg -re -i "$SOURCE" \
-          -c:v libx264 -preset veryfast -b:v 3000k \
-          -c:a aac -b:a 128k \
-          -f flv "$SERVER/$KEY"
+          # 1. Inisialisasi argumen input dasar
+          INPUT_ARGS="-re -i $VIDEO"
+          FILTER_COMPLEX=""
+          MAP_ARGS="-map [v] -map [a]"
+          
+          # Hitung indeks input (Video utama = input 0)
+          CURRENT_INDEX=1
+
+          # 2. Logika jika ada Audio Tambahan (Input 1)
+          if [ -not -z "$AUDIO" ]; then
+            INPUT_ARGS="$INPUT_ARGS -i $AUDIO"
+            # Menggabungkan audio video utama [0:a] dengan audio tambahan [1:a]
+            FILTER_COMPLEX="[0:a][1:a]amix=inputs=2:duration=first[a];"
+            AUDIO_INDEX=$CURRENT_INDEX
+            CURRENT_INDEX=$((CURRENT_INDEX + 1))
+          else
+            # Jika tidak ada audio tambahan, gunakan audio bawaan video utama
+            FILTER_COMPLEX="[0:a]asplit[a];"
+          fi
+
+          # 3. Logika jika ada Gambar Overlay/Watermark
+          if [ -not -z "$IMAGE" ]; then
+            INPUT_ARGS="$INPUT_ARGS -i $IMAGE"
+            # Menumpuk gambar di atas video utama (posisi kanan bawah, jarak 10 pixel)
+            FILTER_COMPLEX="${FILTER_COMPLEX}[0:v][$CURRENT_INDEX:v]overlay=W-w-10:H-h-10[v]"
+          else
+            # Jika tidak ada gambar, teruskan video utama langsung
+            FILTER_COMPLEX="${FILTER_COMPLEX}[0:v]split[v]"
+          fi
+
+          # 4. Eksekusi Perintah FFmpeg secara utuh
+          ffmpeg $INPUT_ARGS \
+            -filter_complex "$FILTER_COMPLEX" \
+            $MAP_ARGS \
+            -c:v libx264 -preset veryfast -b:v 3000k -maxrate 3000k -bufsize 6000k \
+            -pix_fmt yuv420p -g 60 \
+            -c:a aac -b:a 128k \
+            -f flv "$SERVER/$KEY"
+            
