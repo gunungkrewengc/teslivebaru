@@ -1,0 +1,38 @@
+name: LIVESTREAM FFMPEG
+
+on:
+  workflow_dispatch:
+    inputs:
+      input_source:
+        description: 'URL Sumber Video (bisa link .mp4, .m3u8, atau file)'
+        required: true
+        default: 'https://example.com/video.mp4'
+      stream_key:
+        description: 'Masukkan Stream Key baru di sini'
+        required: true
+      rtmp_url:
+        description: 'RTMP Server URL (misal: rtmp://a.rtmp.youtube.com/live2)'
+        required: true
+        default: 'rtmp://a.rtmp.youtube.com/live2'
+
+jobs:
+  live-streaming:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install FFmpeg
+        run: |
+          sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg7 -y > /dev/null
+          sudo apt update -qq > /dev/null
+          sudo apt install ffmpeg -y -qq > /dev/null
+
+      - name: Start Stream
+        env:
+          SOURCE: ${{ github.event.inputs.input_source }}
+          KEY: ${{ github.event.inputs.stream_key }}
+          SERVER: ${{ github.event.inputs.rtmp_url }}
+        run: |
+          # Perintah ini akan otomatis menggunakan variabel yang Anda isi tadi
+          ffmpeg -re -i "$SOURCE" \
+          -c:v libx264 -preset veryfast -b:v 3000k \
+          -c:a aac -b:a 128k \
+          -f flv "$SERVER/$KEY"
