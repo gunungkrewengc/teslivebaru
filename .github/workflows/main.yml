@@ -1,4 +1,4 @@
-name: FFmpeg Essential Livestream
+name: FFmpeg Essential Livestream Anti-Putus
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       # 1. INPUT & PENGATURAN DASAR
       # =========================
       video:
-        description: 'Input Video (URL atau Nama File)'
+        description: 'Input Video (URL m3u8 atau Nama File)'
         required: true
         default: 'input.mp4'
       is_loop:
@@ -18,7 +18,7 @@ on:
           - Loop Terus Menerus (-1)
         default: 'default (Tanpa Loop)'
       is_re:
-        description: 'Gunakan Realtime? (-re) - Wajib untuk streaming file'
+        description: 'Gunakan Realtime? (-re)'
         type: choice
         options:
           - default (Gunakan -re)
@@ -44,11 +44,11 @@ on:
           - veryfast
         default: 'default (none)'
       video_bitrate:
-        description: 'Video Bitrate (Misal: 2500k) - Kosongkan untuk default'
+        description: 'Video Bitrate (Misal: 2500k)'
         required: false
         default: ''
       audio_codec:
-        description: 'Audio Codec (AAC sangat disarankan untuk RTMP)'
+        description: 'Audio Codec'
         type: choice
         options:
           - default (copy)
@@ -59,7 +59,7 @@ on:
       # 3. COMMAND TAMBAHAN
       # =========================
       extra_cmd:
-        description: 'Command Ekstra (Ketik bebas, misal: -maxrate 3000k)'
+        description: 'Command Ekstra (Opsional)'
         required: false
         default: ''
 
@@ -110,27 +110,34 @@ jobs:
             # 1. Parameter Input (Loop & Realtime)
             if [[ "$IS_RE" == "default (Gunakan -re)" ]]; then CMD="$CMD -re"; fi
             if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
+            
+            # 2. FITUR AUTO-RECONNECT KHUSUS M3U8/HTTP
+            # Mencegah disconnect ke YouTube saat m3u8 sumber patah-patah
+            if [[ "$VIDEO" == "http"* ]]; then
+              CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
+            fi
+            
             CMD="$CMD -i \"$VIDEO\""
             
-            # 2. Parameter Video
+            # 3. Parameter Video
             if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
             if [[ "$V_PRESET" != "default"* ]]; then CMD="$CMD -preset $V_PRESET"; fi
             if [[ -n "$V_BITRATE" ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
             
-            # 3. Parameter Audio
+            # 4. Parameter Audio
             if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
             
-            # 4. Command Bebas
+            # 5. Command Bebas
             if [[ -n "$EXTRA_CMD" ]]; then CMD="$CMD $EXTRA_CMD"; fi
             
-            # 5. Output
+            # 6. Output
             CMD="$CMD -f flv \"$RTMP/$KEY\""
             
             echo "Menjalankan: $CMD"
             eval $CMD
             
             if [ $? -ne 0 ]; then
-              echo "Koneksi terputus atau error. Restarting FFmpeg dalam 5 detik..."
+              echo "Server M3U8 mati total atau error kritis. Merestart paksa FFmpeg dalam 5 detik..."
               sleep 5
             else
               echo "Stream selesai tanpa error."
