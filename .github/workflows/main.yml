@@ -42,9 +42,16 @@ on:
           - medium
         default: 'default (none)'
       video_bitrate:
-        description: '   ↳ Command Video: Bitrate (Misal: 2500k atau 4M)'
-        required: false
-        default: ''
+        description: '   ↳ Command Video: Kualitas Bitrate Video (-b:v)'
+        type: choice
+        options:
+          - default (Asli)
+          - 1000k
+          - 2000k
+          - 3000k
+          - 4000k
+          - 6000k
+        default: 'default (Asli)'
       video_fps:
         description: '   ↳ Command Video: Batasi FPS (-r)'
         type: choice
@@ -289,7 +296,7 @@ jobs:
             fi
             
             if [[ "$V_PRESET" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -preset $V_PRESET"; fi
-            if [[ -n "$V_BITRATE" ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
+            if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
             if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
             
             # 6. ATUR LOGIKA DEFAULT UNTUK ENCODING AUDIO
