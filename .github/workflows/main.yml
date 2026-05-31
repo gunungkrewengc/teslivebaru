@@ -92,14 +92,25 @@ on:
           - 192k
           - 256k
         default: 'default (Asli)'
-      audio_volume:
-        description: '   ↳ Command Audio: Sesuaikan Volume (-af volume)'
+      audio_volume_main:
+        description: '   ↳ Command Audio: Volume AUDIO ASLI VIDEO'
         type: choice
         options:
           - default (Normal)
           - 0.5 (Setengah)
+          - 1.0 (Normal)
           - 1.5 (Lebih Keras)
           - 2.0 (Dua Kali Lipat)
+        default: 'default (Normal)'
+      audio_volume_ext:
+        description: '   ↳ Command Audio: Volume AUDIO TAMBAHAN (Backsound)'
+        type: choice
+        options:
+          - default (Normal)
+          - 0.2 (Sangat Pelan - Cocok untuk Musik Latar)
+          - 0.5 (Setengah)
+          - 1.0 (Normal)
+          - 1.5 (Lebih Keras)
         default: 'default (Normal)'
 
       # =========================================================
@@ -202,7 +213,8 @@ jobs:
           A_MIX="${{ github.event.inputs.audio_mix }}"
           A_CODEC="${{ github.event.inputs.audio_codec }}"
           A_BITRATE="${{ github.event.inputs.audio_bitrate }}"
-          A_VOLUME="${{ github.event.inputs.audio_volume }}"
+          A_VOL_MAIN="${{ github.event.inputs.audio_volume_main }}"
+          A_VOL_EXT="${{ github.event.inputs.audio_volume_ext }}"
           
           IMAGE="${{ github.event.inputs.image }}"
           IMG_SCALE="${{ github.event.inputs.image_scale }}"
@@ -284,13 +296,17 @@ jobs:
               V_MAP="v_txt"
             fi
             
-            # LOGIKA UTAMA TUMPANG TINDIH AUDIO (AMIX)
+            # LOGIKA FILTER DUA VOLUME TERPISAH (AMIX TINGKAT LANJUT)
             if [[ "$AUDIO_PRESENT" -eq 1 ]]; then
               if [[ "$A_MIX" == "Gabungkan"* ]]; then
-                VOL_FILT=""
-                if [[ "$A_VOLUME" != "default"* ]]; then VOL_FILT=",volume=$A_VOLUME"; fi
-                # Menyatukan audio input 0 (video) dan input 1 (audio luar)
-                FILTER="${FILTER}[0:a][1:a]amix=inputs=2:duration=first${VOL_FILT}[a_mix];"
+                V_MAIN_FILT="volume=1.0"
+                if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$A_VOL_MAIN"; fi
+                
+                V_EXT_FILT="volume=1.0"
+                if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$A_VOL_EXT"; fi
+                
+                # Mengatur volume masing-masing jalur audio secara terpisah lalu menggabungkannya
+                FILTER="${FILTER}[0:a]${V_MAIN_FILT}[a_m];[1:a]${V_EXT_FILT}[a_e];[a_m][a_e]amix=inputs=2:duration=first[a_mix];"
                 A_MAP="a_mix"
                 USE_A_FILTER=1
               else
@@ -302,17 +318,13 @@ jobs:
             if [[ -n "$FILTER" ]]; then
               FILTER=${FILTER%?} # Hapus titik koma di paling ujung
               CMD="$CMD -filter_complex \"$FILTER\""
-              
-              # Map Video Output
               if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map \"[$V_MAP]\""; fi
-              
-              # Map Audio Output
               if [[ "$USE_A_FILTER" -eq 1 ]]; then CMD="$CMD -map \"[$A_MAP]\""; else CMD="$CMD -map $A_MAP?"; fi
             else
               CMD="$CMD -map 0:v? -map $A_MAP?"
             fi
             
-            # 5. CODEC VIDEO (Otomatis encode libx264 jika pakai efek gambar/teks)
+            # 5. CODEC VIDEO
             FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" ]]; then FORCE_V_ENCODE=1; fi
             if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
               if [[ "$V_CODEC" == "default"* ]]; then V_CODEC="libx264"; fi
@@ -320,21 +332,24 @@ jobs:
             else
               if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
             fi
-            
             if [[ "$V_PRESET" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -preset $V_PRESET"; fi
             if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
             if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
             
-            # 6. CODEC AUDIO (Otomatis encode ke AAC jika audio di-mix/gabung)
+            # 6. CODEC AUDIO & PENGATURAN VOLUME SINGLE MODE
             if [[ "$USE_A_FILTER" -eq 1 ]]; then
               if [[ "$A_CODEC" == "default"* ]]; then A_CODEC="aac"; fi
               CMD="$CMD -c:a $A_CODEC"
             else
               if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
-              # Atur volume manual jika tidak pakai mode gabung
-              if [[ "$A_VOLUME" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOLUME\""; fi
+              
+              # Jika mode ganti audio (bukan gabung), volume diatur normal berdasarkan file mana yang aktif
+              if [[ "$AUDIO_PRESENT" -eq 1 ]]; then
+                if [[ "$A_VOL_EXT" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_EXT\""; fi
+              else
+                if [[ "$A_VOL_MAIN" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_MAIN\""; fi
+              fi
             fi
-            
             if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
             
             # 7. OUTPUT FINAL FLV RTMP
