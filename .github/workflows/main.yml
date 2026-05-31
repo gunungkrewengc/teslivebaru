@@ -1,14 +1,22 @@
-name: FFmpeg Modular Livestream
+name: FFmpeg Modular Ultimate Livestream
 
 on:
   workflow_dispatch:
     inputs:
       # =========================================================
-      # 1. KELOMPOK VIDEO (INPUT & COMMAND)
+      # 0. SAKELAR UTAMA: COMMAND MANUAL (BYPASS ALL)
+      # =========================================================
+      manual_cmd:
+        description: '⚠️ [COMMAND MANUAL] Isi lengkap jika ingin bypass semua kolom bawah. Kosongkan jika ingin pakai dropdown.'
+        required: false
+        default: ''
+
+      # =========================================================
+      # 1. KELOMPOK VIDEO (INPUT, LAYOUT & COMMAND)
       # =========================================================
       video:
         description: '▶️ [INPUT VIDEO] URL (m3u8/mp4) atau Nama File'
-        required: true
+        required: false
         default: 'input.mp4'
       is_loop:
         description: '   ↳ Command Video: Loop Video? (-stream_loop)'
@@ -24,6 +32,14 @@ on:
           - default (Gunakan -re)
           - Tanpa -re (Maksimal Speed)
         default: 'default (Gunakan -re)'
+      video_layout:
+        description: '   ↳ Command Video: Rasio Layar / Layout HP'
+        type: choice
+        options:
+          - default (Ikuti Video Asli)
+          - Instagram/TikTok 9:16 (Crop Kanan-Kiri)
+          - Instagram/TikTok 9:16 (Kotak Hitam Atas-Bawah)
+        default: 'default (Ikuti Video Asli)'
       video_codec:
         description: '   ↳ Command Video: Codec (-c:v)'
         type: choice
@@ -179,11 +195,11 @@ on:
       # =========================================================
       rtmp_link:
         description: '🚀 Link RTMP Server'
-        required: true
+        required: false
         default: 'rtmp://a.rtmp.youtube.com/live2'
       stream_key:
         description: '🔑 Stream Key'
-        required: true
+        required: false
         default: ''
 
 jobs:
@@ -201,9 +217,14 @@ jobs:
           
       - name: Jalankan Core Engine FFmpeg
         run: |
+          # Load data input utama manual
+          MANUAL_CMD="${{ github.event.inputs.manual_cmd }}"
+          
+          # Load data input dropdown
           VIDEO="${{ github.event.inputs.video }}"
           IS_LOOP="${{ github.event.inputs.is_loop }}"
           IS_RE="${{ github.event.inputs.is_re }}"
+          V_LAYOUT="${{ github.event.inputs.video_layout }}"
           V_CODEC="${{ github.event.inputs.video_codec }}"
           V_PRESET="${{ github.event.inputs.video_preset }}"
           V_BITRATE="${{ github.event.inputs.video_bitrate }}"
@@ -229,140 +250,134 @@ jobs:
           KEY="${{ github.event.inputs.stream_key }}"
 
           while true; do
-            echo "Menyusun komponen perintah..."
-            CMD="ffmpeg"
-            
-            # 1. INPUT VIDEO GLOBAL
-            if [[ "$IS_RE" == "default (Gunakan -re)" ]]; then CMD="$CMD -re"; fi
-            if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
-            if [[ "$VIDEO" == "http"* ]]; then
-              CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
-            fi
-            CMD="$CMD -i \"$VIDEO\""
-            
-            # 2. INPUT AUDIO TAMBAHAN
-            AUDIO_PRESENT=0
-            if [[ -n "$AUDIO" ]]; then
-              AUDIO_PRESENT=1
-              if [[ "$AUDIO" == "http"* ]]; then
+            # ---------------------------------------------------------
+            # SAKELAR OTOMATIS: JIKA KOLOM MANUAL DIISI
+            # ---------------------------------------------------------
+            if [[ -n "$MANUAL_CMD" ]]; then
+              echo "[SISTEM DIALIKHAN] Menjalankan murni command manual dari pengguna..."
+              CMD="$MANUAL_CMD"
+            else
+              # ---------------------------------------------------------
+              # MODE DROPDOWN OTOMATIS (JIKA KOLOM MANUAL KOSONG)
+              # ---------------------------------------------------------
+              echo "Menyusun komponen perintah otomatis dari dropdown..."
+              CMD="ffmpeg"
+              
+              if [[ "$IS_RE" == "default (Gunakan -re)" ]]; then CMD="$CMD -re"; fi
+              if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
+              if [[ "$VIDEO" == "http"* ]]; then
                 CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
               fi
-              CMD="$CMD -i \"$AUDIO\""
-            fi
-            
-            # 3. INPUT GAMBAR OVERLAY
-            IMAGE_PRESENT=0
-            if [[ -n "$IMAGE" ]]; then
-              IMAGE_PRESENT=1
-              if [[ "$IMAGE" == "http"* ]]; then
-                CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
+              CMD="$CMD -i \"$VIDEO\""
+              
+              if [[ -n "$AUDIO" ]]; then
+                AUDIO_PRESENT=1
+                if [[ "$AUDIO" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
+                CMD="$CMD -i \"$AUDIO\""
               fi
-              CMD="$CMD -i \"$IMAGE\""
-            fi
-            
-            # 4. FILTER FILTER KOMPLEKS (VIDEO & AUDIO)
-            FILTER=""
-            V_MAP="0:v"
-            A_MAP="0:a"
-            USE_A_FILTER=0
-            
-            # Pemrosesan Filter Gambar
-            if [[ "$IMAGE_PRESENT" -eq 1 ]]; then
-              IMG_IDX="1"; if [[ "$AUDIO_PRESENT" -eq 1 ]]; then IMG_IDX="2"; fi
-              SCALE_CMD=""
-              if [[ "$IMG_SCALE" != "default"* ]]; then SCALE_CMD="scale=$IMG_SCALE,"; fi
               
-              POS="W-w-10:10"
-              if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
-              if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
-              if [[ "$IMG_POS" == "Kiri Bawah" ]]; then POS="10:H-h-10"; fi
+              if [[ -n "$IMAGE" ]]; then
+                IMAGE_PRESENT=1
+                if [[ "$IMAGE" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
+                CMD="$CMD -i \"$IMAGE\""
+              fi
               
-              FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS[v_img];"
-              V_MAP="v_img"
-            fi
-            
-            # Pemrosesan Filter Teks
-            if [[ -n "$TEXT" ]]; then
-              COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
-              SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
+              FILTER=""
+              V_MAP="0:v"
+              A_MAP="0:a"
+              USE_A_FILTER=0
+              FORCE_V_ENCODE_LAY=0
               
-              T_X="10"; T_Y="H-h-30"
-              if [[ "$TXT_POS" == "Bawah Tengah" ]]; then T_X="(W-w)/2"; T_Y="H-h-30"; fi
-              if [[ "$TXT_POS" == "Kiri Atas" ]]; then T_X="10"; T_Y="10"; fi
-              if [[ "$TXT_POS" == "Kanan Atas" ]]; then T_X="W-w-10"; T_Y="10"; fi
-              if [[ "$TXT_POS" == "Tengah Screen" ]]; then T_X="(W-w)/2"; T_Y="(H-h)/2"; fi
+              if [[ "$V_LAYOUT" == *"Crop"* ]]; then
+                FILTER="${FILTER}[0:v]crop=ih*9/16:ih[v_lay];"
+                V_MAP="v_lay"; FORCE_V_ENCODE_LAY=1
+              elif [[ "$V_LAYOUT" == *"Kotak Hitam"* ]]; then
+                FILTER="${FILTER}[0:v]pad=iw:iw*16/9:0:(oh-ih)/2:black[v_lay];"
+                V_MAP="v_lay"; FORCE_V_ENCODE_LAY=1
+              fi
               
-              FILTER="${FILTER}[$V_MAP]drawtext=text='$TEXT':fontcolor=$COLOR:fontsize=$SIZE:x=$T_X:y=$T_Y[v_txt];"
-              V_MAP="v_txt"
-            fi
-            
-            # LOGIKA FILTER DUA VOLUME TERPISAH (AMIX TINGKAT LANJUT)
-            if [[ "$AUDIO_PRESENT" -eq 1 ]]; then
-              if [[ "$A_MIX" == "Gabungkan"* ]]; then
-                V_MAIN_FILT="volume=1.0"
-                if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$A_VOL_MAIN"; fi
-                
-                V_EXT_FILT="volume=1.0"
-                if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$A_VOL_EXT"; fi
-                
-                # Mengatur volume masing-masing jalur audio secara terpisah lalu menggabungkannya
-                FILTER="${FILTER}[0:a]${V_MAIN_FILT}[a_m];[1:a]${V_EXT_FILT}[a_e];[a_m][a_e]amix=inputs=2:duration=first[a_mix];"
-                A_MAP="a_mix"
-                USE_A_FILTER=1
+              if [[ "$IMAGE_PRESENT" -eq 1 ]]; then
+                IMG_IDX="1"; if [[ -n "$AUDIO" ]]; then IMG_IDX="2"; fi
+                SCALE_CMD=""
+                if [[ "$IMG_SCALE" != "default"* ]]; then SCALE_CMD="scale=$IMG_SCALE,"; fi
+                POS="W-w-10:10"
+                if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
+                if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
+                if [[ "$IMG_POS" == "Kiri Bawah" ]]; then POS="10:H-h-10"; fi
+                FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS[v_img];"
+                V_MAP="v_img"
+              fi
+              
+              if [[ -n "$TEXT" ]]; then
+                COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
+                SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
+                T_X="10"; T_Y="H-h-30"
+                if [[ "$TXT_POS" == "Bawah Tengah" ]]; then T_X="(W-w)/2"; T_Y="H-h-30"; fi
+                if [[ "$TXT_POS" == "Kiri Atas" ]]; then T_X="10"; T_Y="10"; fi
+                if [[ "$TXT_POS" == "Kanan Atas" ]]; then T_X="W-w-10"; T_Y="10"; fi
+                if [[ "$TXT_POS" == "Tengah Screen" ]]; then T_X="(W-w)/2"; T_Y="(H-h)/2"; fi
+                FILTER="${FILTER}[$V_MAP]drawtext=text='$TEXT':fontcolor=$COLOR:fontsize=$SIZE:x=$T_X:y=$T_Y[v_txt];"
+                V_MAP="v_txt"
+              fi
+              
+              if [[ -n "$AUDIO" ]]; then
+                if [[ "$A_MIX" == "Gabungkan"* ]]; then
+                  V_MAIN_FILT="volume=1.0"; if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$A_VOL_MAIN"; fi
+                  V_EXT_FILT="volume=1.0";  if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$A_VOL_EXT"; fi
+                  FILTER="${FILTER}[0:a]${V_MAIN_FILT}[a_m];[1:a]${V_EXT_FILT}[a_e];[a_m][a_e]amix=inputs=2:duration=first[a_mix];"
+                  A_MAP="a_mix"; USE_A_FILTER=1
+                else
+                  A_MAP="1:a"
+                fi
+              fi
+              
+              if [[ -n "$FILTER" ]]; then
+                FILTER=${FILTER%?}
+                CMD="$CMD -filter_complex \"$FILTER\""
+                if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map \"[$V_MAP]\""; fi
+                if [[ "$USE_A_FILTER" -eq 1 ]]; then CMD="$CMD -map \"[$A_MAP]\""; else CMD="$CMD -map $A_MAP?"; fi
               else
-                A_MAP="1:a"
+                CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
-            fi
-            
-            # Rakit Filter_Complex jika ada Isinya
-            if [[ -n "$FILTER" ]]; then
-              FILTER=${FILTER%?} # Hapus titik koma di paling ujung
-              CMD="$CMD -filter_complex \"$FILTER\""
-              if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map \"[$V_MAP]\""; fi
-              if [[ "$USE_A_FILTER" -eq 1 ]]; then CMD="$CMD -map \"[$A_MAP]\""; else CMD="$CMD -map $A_MAP?"; fi
-            else
-              CMD="$CMD -map 0:v? -map $A_MAP?"
-            fi
-            
-            # 5. CODEC VIDEO
-            FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" ]]; then FORCE_V_ENCODE=1; fi
-            if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
-              if [[ "$V_CODEC" == "default"* ]]; then V_CODEC="libx264"; fi
-              CMD="$CMD -c:v $V_CODEC"
-            else
-              if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
-            fi
-            if [[ "$V_PRESET" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -preset $V_PRESET"; fi
-            if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
-            if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
-            
-            # 6. CODEC AUDIO & PENGATURAN VOLUME SINGLE MODE
-            if [[ "$USE_A_FILTER" -eq 1 ]]; then
-              if [[ "$A_CODEC" == "default"* ]]; then A_CODEC="aac"; fi
-              CMD="$CMD -c:a $A_CODEC"
-            else
-              if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
               
-              # Jika mode ganti audio (bukan gabung), volume diatur normal berdasarkan file mana yang aktif
-              if [[ "$AUDIO_PRESENT" -eq 1 ]]; then
-                if [[ "$A_VOL_EXT" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_EXT\""; fi
+              FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
+              if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
+                if [[ "$V_CODEC" == "default"* ]]; then V_CODEC="libx264"; fi
+                CMD="$CMD -c:v $V_CODEC"
               else
-                if [[ "$A_VOL_MAIN" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_MAIN\""; fi
+                if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
               fi
+              if [[ "$V_PRESET" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -preset $V_PRESET"; fi
+              if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
+              if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
+              
+              if [[ "$USE_A_FILTER" -eq 1 ]]; then
+                if [[ "$A_CODEC" == "default"* ]]; then A_CODEC="aac"; fi
+                CMD="$CMD -c:a $A_CODEC"
+              else
+                if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
+                if [[ -n "$AUDIO" ]]; then
+                  if [[ "$A_VOL_EXT" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_EXT\""; fi
+                else
+                  if [[ "$A_VOL_MAIN" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_MAIN\""; fi
+                fi
+              fi
+              if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
+              
+              CMD="$CMD -f flv \"$RTMP/$KEY\""
             fi
-            if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
-            
-            # 7. OUTPUT FINAL FLV RTMP
-            CMD="$CMD -f flv \"$RTMP/$KEY\""
-            
-            echo "Eksekusi Perintah: $CMD"
+
+            # ---------------------------------------------------------
+            # EKSEKUSI PERINTAH (MANUAL / OTOMATIS)
+            # ---------------------------------------------------------
+            echo "Menjalankan perintah: $CMD"
             eval $CMD
             
             if [ $? -ne 0 ]; then
-              echo "Koneksi terputus/Timeout. Mencoba menyambung kembali dalam 5 detik..."
+              echo "Proses berhenti/Error. Mengulang kembali dalam 5 detik..."
               sleep 5
             else
-              echo "Selesai."
+              echo "Selesai dengan sukses."
               break
             fi
           done
