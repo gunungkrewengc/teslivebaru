@@ -1,30 +1,87 @@
-name: FFmpeg Custom Inputs
+name: FFmpeg Custom Dropdown Inputs
 
 on:
   workflow_dispatch:
     inputs:
+      # =========================
+      # BAGIAN VIDEO
+      # =========================
       video:
         description: 'Input Video (URL atau nama file)'
         required: false
         default: 'input.mp4'
-      video_cmd:
-        description: 'Command Video (misal: -c:v libx264 -preset veryfast)'
-        required: false
-        default: '-c:v copy'
+      video_codec:
+        description: 'Pilih Video Codec'
+        type: choice
+        options:
+          - default (copy)
+          - libx264
+          - libx265
+        default: 'default (copy)'
+      video_preset:
+        description: 'Pilih Kecepatan Preset (untuk libx264/libx265)'
+        type: choice
+        options:
+          - default (none)
+          - ultrafast
+          - veryfast
+          - medium
+        default: 'default (none)'
+
+      # =========================
+      # BAGIAN AUDIO
+      # =========================
       audio:
-        description: 'Input Audio (URL atau nama file)'
+        description: 'Input Audio Tambahan (Kosongkan jika pakai audio asli)'
         required: false
         default: ''
+      audio_codec:
+        description: 'Pilih Audio Codec'
+        type: choice
+        options:
+          - default (copy)
+          - aac
+          - libmp3lame
+        default: 'default (copy)'
+
+      # =========================
+      # BAGIAN GAMBAR / WATERMARK
+      # =========================
       image:
-        description: 'Input Gambar (Watermark / Overlay)'
+        description: 'Input Gambar (URL/File) - Kosongkan jika tidak ada'
         required: false
         default: ''
+      image_scale:
+        description: 'Ukuran Gambar (Lebar x Tinggi)'
+        type: choice
+        options:
+          - default (ukuran asli)
+          - 100:-1 (Lebar 100px)
+          - 200:-1 (Lebar 200px)
+        default: 'default (ukuran asli)'
+
+      # =========================
+      # BAGIAN TEKS
+      # =========================
       text:
-        description: 'Input Teks'
+        description: 'Teks Berjalan / Watermark Teks'
         required: false
         default: ''
+      text_color:
+        description: 'Warna Teks'
+        type: choice
+        options:
+          - default (white)
+          - red
+          - yellow
+          - black
+        default: 'default (white)'
+
+      # =========================
+      # BAGIAN OUTPUT (RTMP)
+      # =========================
       rtmp_link:
-        description: 'Link RTMP (misal: rtmp://a.rtmp.youtube.com/live2)'
+        description: 'Link RTMP'
         required: false
         default: 'rtmp://'
       stream_key:
@@ -43,27 +100,60 @@ jobs:
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
           sudo apt install ffmpeg -y -qq > /dev/null
-      - name: Run FFmpeg
+          
+      - name: Build and Run FFmpeg
         run: |
-          # Membaca semua inputan kolom ke dalam variabel Bash
+          # 1. Mengambil input dari kolom
           VIDEO="${{ github.event.inputs.video }}"
-          VIDEO_CMD="${{ github.event.inputs.video_cmd }}"
+          V_CODEC="${{ github.event.inputs.video_codec }}"
+          V_PRESET="${{ github.event.inputs.video_preset }}"
+          
           AUDIO="${{ github.event.inputs.audio }}"
+          A_CODEC="${{ github.event.inputs.audio_codec }}"
+          
           IMAGE="${{ github.event.inputs.image }}"
+          IMG_SCALE="${{ github.event.inputs.image_scale }}"
+          
           TEXT="${{ github.event.inputs.text }}"
+          TXT_COLOR="${{ github.event.inputs.text_color }}"
+          
           RTMP="${{ github.event.inputs.rtmp_link }}"
           KEY="${{ github.event.inputs.stream_key }}"
-          
+
+          # 2. Logika Penerapan Default untuk Video
+          CMD_V_CODEC="-c:v copy"
+          if [[ "$V_CODEC" != "default (copy)" ]]; then
+            CMD_V_CODEC="-c:v $V_CODEC"
+          fi
+
+          CMD_V_PRESET=""
+          if [[ "$V_PRESET" != "default (none)" ]]; then
+            CMD_V_PRESET="-preset $V_PRESET"
+          fi
+
+          # 3. Logika Penerapan Default untuk Audio
+          CMD_A_CODEC="-c:a copy"
+          if [[ "$A_CODEC" != "default (copy)" ]]; then
+            CMD_A_CODEC="-c:a $A_CODEC"
+          fi
+
+          # ==========================================
+          # Proses Looping FFmpeg
+          # ==========================================
           while true; do
-            # ---------------------------------------------------------
-            # Susun perintah FFmpeg kamu di bawah ini. 
-            # Ini adalah contoh susunan dasar membaca Video + Command + RTMP/Key
-            # ---------------------------------------------------------
+            echo "Memulai Streaming..."
             
-            ffmpeg -i "$VIDEO" $VIDEO_CMD -f flv "$RTMP/$KEY"
+            # Ini adalah contoh perintah dasar yang merakit variabel di atas.
+            # Jika ada gambar atau teks, perintah ini butuh modifikasi filter_complex lanjutan.
+            # Saat ini, eksekusi difokuskan pada codec video/audio dasar.
+            
+            ffmpeg -re -i "$VIDEO" $CMD_V_CODEC $CMD_V_PRESET $CMD_A_CODEC -f flv "$RTMP/$KEY"
             
             if [ $? -ne 0 ]; then
-              echo "FFmpeg stopped with error code $?. Restarting in 5 seconds..."
+              echo "FFmpeg berhenti/error. Restart otomatis dalam 5 detik..."
               sleep 5
+            else
+              echo "Streaming selesai dengan sukses."
+              break # Keluar dari loop jika berhasil tanpa error
             fi
           done
