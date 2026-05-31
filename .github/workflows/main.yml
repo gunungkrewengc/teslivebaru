@@ -1,106 +1,75 @@
-name: FFmpeg Full Features
+name: FFmpeg Essential Livestream
 
 on:
   workflow_dispatch:
     inputs:
       # =========================
-      # 1. KOLOM VIDEO
+      # 1. INPUT & PENGATURAN DASAR
       # =========================
       video:
-        description: 'Input Video (Wajib: URL/File)'
+        description: 'Input Video (URL atau Nama File)'
         required: true
         default: 'input.mp4'
+      is_loop:
+        description: 'Loop Video? (-stream_loop)'
+        type: choice
+        options:
+          - default (Tanpa Loop)
+          - Loop Terus Menerus (-1)
+        default: 'default (Tanpa Loop)'
+      is_re:
+        description: 'Gunakan Realtime? (-re) - Wajib untuk streaming file'
+        type: choice
+        options:
+          - default (Gunakan -re)
+          - Tanpa -re (Maksimal Speed)
+        default: 'default (Gunakan -re)'
+
+      # =========================
+      # 2. PENGATURAN ENCODING (KUALITAS)
+      # =========================
       video_codec:
-        description: 'Command Video: Codec'
+        description: 'Video Codec'
         type: choice
         options:
           - default (copy)
           - libx264
-          - libx265
         default: 'default (copy)'
       video_preset:
-        description: 'Command Video: Preset (hanya untuk x264/x265)'
+        description: 'Preset Kecepatan (Jika pakai libx264)'
         type: choice
         options:
           - default (none)
           - ultrafast
           - veryfast
-          - medium
         default: 'default (none)'
-
-      # =========================
-      # 2. KOLOM AUDIO
-      # =========================
-      audio:
-        description: 'Input Audio Tambahan (Kosongkan jika pakai audio asli video)'
+      video_bitrate:
+        description: 'Video Bitrate (Misal: 2500k) - Kosongkan untuk default'
         required: false
         default: ''
       audio_codec:
-        description: 'Command Audio: Codec'
+        description: 'Audio Codec (AAC sangat disarankan untuk RTMP)'
         type: choice
         options:
           - default (copy)
           - aac
-          - libmp3lame
         default: 'default (copy)'
-
+        
       # =========================
-      # 3. KOLOM GAMBAR (WATERMARK)
+      # 3. COMMAND TAMBAHAN
       # =========================
-      image:
-        description: 'Input Gambar (URL/File) - Kosongkan jika tidak ada'
+      extra_cmd:
+        description: 'Command Ekstra (Ketik bebas, misal: -maxrate 3000k)'
         required: false
         default: ''
-      image_scale:
-        description: 'Command Gambar: Ukuran (Lebar)'
-        type: choice
-        options:
-          - default (ukuran asli)
-          - 100:-1 (Lebar 100px)
-          - 200:-1 (Lebar 200px)
-        default: 'default (ukuran asli)'
-      image_pos:
-        description: 'Command Gambar: Posisi'
-        type: choice
-        options:
-          - default (Kanan Atas)
-          - Kiri Atas
-          - Kanan Bawah
-          - Kiri Bawah
-        default: 'default (Kanan Atas)'
 
       # =========================
-      # 4. KOLOM TEKS
-      # =========================
-      text:
-        description: 'Input Teks (Kosongkan jika tidak ada)'
-        required: false
-        default: ''
-      text_color:
-        description: 'Command Teks: Warna'
-        type: choice
-        options:
-          - default (white)
-          - red
-          - yellow
-          - black
-        default: 'default (white)'
-      text_size:
-        description: 'Command Teks: Ukuran Font'
-        type: choice
-        options:
-          - default (24)
-          - 36
-          - 48
-        default: 'default (24)'
-
-      # =========================
-      # 5. KOLOM OUTPUT
+      # 4. DESTINASI STREAM
       # =========================
       rtmp_link:
-        description: 'Link RTMP'
+        description: 'Link RTMP Server'
         required: true
-        default: 'rtmp://'
+        default: 'rtmp://a.rtmp.youtube.com/live2'
       stream_key:
         description: 'Stream Key'
         required: true
@@ -118,114 +87,53 @@ jobs:
           sudo apt update -y -qq > /dev/null
           sudo apt install ffmpeg -y -qq > /dev/null
           
-      - name: Jalankan FFmpeg dengan Filter Dinamis
+      - name: Jalankan FFmpeg Stream
         run: |
-          # Mengambil semua input
           VIDEO="${{ github.event.inputs.video }}"
+          IS_LOOP="${{ github.event.inputs.is_loop }}"
+          IS_RE="${{ github.event.inputs.is_re }}"
+          
           V_CODEC="${{ github.event.inputs.video_codec }}"
           V_PRESET="${{ github.event.inputs.video_preset }}"
+          V_BITRATE="${{ github.event.inputs.video_bitrate }}"
           
-          AUDIO="${{ github.event.inputs.audio }}"
           A_CODEC="${{ github.event.inputs.audio_codec }}"
-          
-          IMAGE="${{ github.event.inputs.image }}"
-          IMG_SCALE="${{ github.event.inputs.image_scale }}"
-          IMG_POS="${{ github.event.inputs.image_pos }}"
-          
-          TEXT="${{ github.event.inputs.text }}"
-          TXT_COLOR="${{ github.event.inputs.text_color }}"
-          TXT_SIZE="${{ github.event.inputs.text_size }}"
+          EXTRA_CMD="${{ github.event.inputs.extra_cmd }}"
           
           RTMP="${{ github.event.inputs.rtmp_link }}"
           KEY="${{ github.event.inputs.stream_key }}"
 
           while true; do
-            echo "Merakit perintah FFmpeg..."
+            echo "Memulai proses perakitan command..."
+            CMD="ffmpeg"
             
-            # 1. Input Dasar (Video)
-            CMD="ffmpeg -re -i \"$VIDEO\""
+            # 1. Parameter Input (Loop & Realtime)
+            if [[ "$IS_RE" == "default (Gunakan -re)" ]]; then CMD="$CMD -re"; fi
+            if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
+            CMD="$CMD -i \"$VIDEO\""
             
-            # 2. Input Tambahan (Audio & Gambar)
-            if [[ -n "$AUDIO" ]]; then CMD="$CMD -i \"$AUDIO\""; fi
-            if [[ -n "$IMAGE" ]]; then CMD="$CMD -i \"$IMAGE\""; fi
-            
-            # 3. Logika Filter (Jika ada Gambar atau Teks)
-            FILTER=""
-            V_MAP="0:v"
-            
-            # Proses Gambar (Overlay)
-            if [[ -n "$IMAGE" ]]; then
-              # Index gambar: jika ada input audio ekstra, gambar jadi input ke-2, jika tidak input ke-1
-              IMG_IDX="1"; if [[ -n "$AUDIO" ]]; then IMG_IDX="2"; fi
-              
-              # Scale
-              SCALE_CMD=""
-              if [[ "$IMG_SCALE" != "default"* ]]; then SCALE_CMD="scale=$IMG_SCALE,"; fi
-              
-              # Posisi
-              POS="W-w-10:10" # Default Kanan Atas
-              if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
-              if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
-              if [[ "$IMG_POS" == "Kiri Bawah" ]]; then POS="10:H-h-10"; fi
-              
-              FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS[v_img];"
-              V_MAP="v_img"
-            fi
-            
-            # Proses Teks (Drawtext)
-            if [[ -n "$TEXT" ]]; then
-              COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
-              SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
-              
-              FILTER="${FILTER}[$V_MAP]drawtext=text='$TEXT':fontcolor=$COLOR:fontsize=$SIZE:x=10:y=H-h-30[v_txt];"
-              V_MAP="v_txt"
-            fi
-            
-            # Terapkan Filter Video
-            if [[ -n "$FILTER" ]]; then
-              # Hapus titik koma terakhir
-              FILTER=${FILTER%?} 
-              CMD="$CMD -filter_complex \"$FILTER\" -map \"[$V_MAP]\""
-              
-              # CATATAN: Jika pakai filter gambar/teks, video tidak bisa pakai 'copy'. Harus di-encode.
-              if [[ "$V_CODEC" == "default"* ]]; then V_CODEC="libx264"; fi
-              CMD="$CMD -c:v $V_CODEC"
-            else
-              # Jika tidak ada filter gambar/teks
-              if [[ "$V_CODEC" == "default"* ]]; then
-                CMD="$CMD -c:v copy"
-              else
-                CMD="$CMD -c:v $V_CODEC"
-              fi
-            fi
-            
-            # 4. Terapkan Preset Video
+            # 2. Parameter Video
+            if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
             if [[ "$V_PRESET" != "default"* ]]; then CMD="$CMD -preset $V_PRESET"; fi
+            if [[ -n "$V_BITRATE" ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
             
-            # 5. Terapkan Audio Mapping & Codec
-            if [[ -n "$AUDIO" ]]; then
-              CMD="$CMD -map 1:a"
-            else
-              CMD="$CMD -map 0:a?"
-            fi
+            # 3. Parameter Audio
+            if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
             
-            if [[ "$A_CODEC" == "default"* ]]; then
-              CMD="$CMD -c:a copy"
-            else
-              CMD="$CMD -c:a $A_CODEC"
-            fi
+            # 4. Command Bebas
+            if [[ -n "$EXTRA_CMD" ]]; then CMD="$CMD $EXTRA_CMD"; fi
             
-            # 6. Terapkan Output
+            # 5. Output
             CMD="$CMD -f flv \"$RTMP/$KEY\""
             
-            echo "Mengeksekusi: $CMD"
+            echo "Menjalankan: $CMD"
             eval $CMD
             
             if [ $? -ne 0 ]; then
-              echo "Terjadi error. Restart otomatis dalam 5 detik..."
+              echo "Koneksi terputus atau error. Restarting FFmpeg dalam 5 detik..."
               sleep 5
             else
-              echo "Streaming sukses."
+              echo "Stream selesai tanpa error."
               break
             fi
           done
