@@ -1,67 +1,105 @@
-name: 👑 FFMPEG 8 CLOUD ENGINE (SMART DASHBOARD)
+name: 👑 FFMPEG 8 ULTIMATE DROPDOWN DASHBOARD
 
 on:
   workflow_dispatch:
     inputs:
-      # ==========================================
-      # 🎥 KELOMPOK VIDEO (3 KANVAS)
-      # ==========================================
-      v1:
-        description: '📹 [VIDEO 1] Utama (Wajib. Link MP4/M3U8)'
+      # ==========================================================
+      # 🎥 KELOMPOK VIDEO (Pilihan Dropdown)
+      # ==========================================================
+      v1_url:
+        description: '🔗 [VIDEO 1] Link Utama (Wajib)'
         required: true
-        default: 'https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4'
-      v2:
-        description: '🎞️ [VIDEO 2] Layar PIP Kanan Atas (Opsional)'
+      v1_cmd:
+        description: '⚙️ [VIDEO 1] Mode Putar'
+        type: choice
+        options: ['-re -stream_loop -1', '-re', '-stream_loop -1', 'tanpa_parameter']
+        default: '-re -stream_loop -1'
+        
+      v2_url:
+        description: '🔗 [VIDEO 2] Link PIP Overlay (Opsional)'
         required: false
-      v3:
-        description: '🎞️ [VIDEO 3] Layar PIP Kiri Atas (Opsional)'
-        required: false
+      v2_cmd:
+        description: '⚙️ [VIDEO 2] Mode Putar PIP'
+        type: choice
+        options: ['-stream_loop -1', 'tanpa_parameter']
+        default: '-stream_loop -1'
 
-      # ==========================================
-      # 🎵 KELOMPOK AUDIO (3 JALUR MIXER)
-      # ==========================================
-      a1:
-        description: '🎵 [AUDIO 1] Suara Utama Eksternal (Opsional)'
+      # ==========================================================
+      # 🎵 KELOMPOK AUDIO (Pilihan Dropdown)
+      # ==========================================================
+      a1_url:
+        description: '🔗 [AUDIO 1] Link Musik Utama (Opsional)'
         required: false
-      a2:
-        description: '🔉 [AUDIO 2] BGM / Musik Latar (Opsional)'
-        required: false
-      a3:
-        description: '🔉 [AUDIO 3] BGM / Musik Latar (Opsional)'
-        required: false
+      a1_cmd:
+        description: '⚙️ [AUDIO 1] Mode Loop Musik'
+        type: choice
+        options: ['-stream_loop -1', 'tanpa_parameter']
+        default: '-stream_loop -1'
 
-      # ==========================================
-      # 🖼️ KELOMPOK GAMBAR & LOGO (3 LAYER)
-      # ==========================================
-      i1:
-        description: '🖼️ [GAMBAR 1] Logo / GIF Kanan Bawah (Opsional)'
+      a2_url:
+        description: '🔗 [AUDIO 2] Link Backsound (Opsional)'
         required: false
-      i2:
-        description: '🖼️ [GAMBAR 2] Logo / GIF Kiri Bawah (Opsional)'
-        required: false
-      i3:
-        description: '🖼️ [GAMBAR 3] Logo / GIF Tengah Atas (Opsional)'
-        required: false
+      a2_cmd:
+        description: '⚙️ [AUDIO 2] Mode Loop Backsound'
+        type: choice
+        options: ['-stream_loop -1', 'tanpa_parameter']
+        default: '-stream_loop -1'
 
-      # ==========================================
-      # 📝 KELOMPOK METADATA TEKS
-      # ==========================================
+      # ==========================================================
+      # 🖼️ KELOMPOK GAMBAR/GIF (Pilihan Dropdown)
+      # ==========================================================
+      i1_url:
+        description: '🔗 [GAMBAR 1] Link Logo / GIF Kanan Atas (Opsional)'
+        required: false
+      i1_cmd:
+        description: '⚙️ [GAMBAR 1] Mode Animasi'
+        type: choice
+        options: ['Otomatis Deteksi (GIF/JPG)', '-ignore_loop 0', '-loop 1', 'tanpa_parameter']
+        default: 'Otomatis Deteksi (GIF/JPG)'
+
+      i2_url:
+        description: '🔗 [GAMBAR 2] Link Logo / GIF Kiri Bawah (Opsional)'
+        required: false
+      i2_cmd:
+        description: '⚙️ [GAMBAR 2] Mode Animasi'
+        type: choice
+        options: ['Otomatis Deteksi (GIF/JPG)', '-ignore_loop 0', '-loop 1', 'tanpa_parameter']
+        default: 'Otomatis Deteksi (GIF/JPG)'
+
+      # ==========================================================
+      # 📝 KELOMPOK TEKS (Pilihan Dropdown)
+      # ==========================================================
       t_stat:
-        description: '📝 [TEKS] Watermark Teks Diam (Opsional)'
+        description: '📝 [TEKS] Watermark Diam (Opsional)'
         required: false
       t_run:
         description: '🏃 [TEKS] Running Text Berjalan (Opsional)'
         required: false
+      t_color:
+        description: '🎨 [TEKS] Warna Tulisan'
+        type: choice
+        options: ['white', 'yellow', 'red', 'cyan', 'green']
+        default: 'white'
 
-      # ==========================================
-      # 🚀 KELOMPOK TRANSMISI JARINGAN
-      # ==========================================
-      rtmp:
-        description: '🚀 [OUTPUT] RTMP Server URL'
+      # ==========================================================
+      # 🚀 KELOMPOK ENCODER & SERVER (Pilihan Dropdown)
+      # ==========================================================
+      enc_preset:
+        description: '⚡ [ENCODER] Preset Kecepatan CPU'
+        type: choice
+        options: ['ultrafast', 'veryfast', 'fast', 'medium']
+        default: 'veryfast'
+      enc_bitrate:
+        description: '📊 [ENCODER] Target Bitrate Video'
+        type: choice
+        options: ['1500k', '2500k', '3500k', '4500k', '6000k']
+        default: '2500k'
+      rtmp_url:
+        description: '🚀 [SERVER] RTMP URL'
         required: true
         default: 'rtmp://a.rtmp.youtube.com/live2'
-      key:
-        description: '🔑 [OUTPUT] Stream Key (Wajib)'
+      stream_key:
+        description: '🔑 [SERVER] Stream Key (Wajib)'
         required: true
 
 jobs:
@@ -69,120 +107,127 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Siapkan Sistem Operasi & Pustaka Font
+      - name: Instalasi FFmpeg 8 & FreeFont
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -qq > /dev/null
-          # Install FFmpeg & FreeFont untuk Drawtext Engine
-          sudo apt install -t "o=LP-PPA-ubuntuhandbook1-ffmpeg8" ffmpeg -y -qq > /dev/null || sudo apt install ffmpeg -y -qq > /dev/null
-          sudo apt install fonts-freefont-ttf -y -qq > /dev/null
+          sudo apt install -t "o=LP-PPA-ubuntuhandbook1-ffmpeg8" ffmpeg fonts-freefont-ttf -y -qq > /dev/null || sudo apt install ffmpeg fonts-freefont-ttf -y -qq > /dev/null
 
-      - name: Eksekusi FFmpeg 8 Smart Engine
+      - name: Eksekusi FFmpeg Smart Backend
         env:
-          V1: ${{ github.event.inputs.v1 }}
-          V2: ${{ github.event.inputs.v2 }}
-          V3: ${{ github.event.inputs.v3 }}
-          A1: ${{ github.event.inputs.a1 }}
-          A2: ${{ github.event.inputs.a2 }}
-          A3: ${{ github.event.inputs.a3 }}
-          I1: ${{ github.event.inputs.i1 }}
-          I2: ${{ github.event.inputs.i2 }}
-          I3: ${{ github.event.inputs.i3 }}
+          V1: ${{ github.event.inputs.v1_url }}; V1_CMD: ${{ github.event.inputs.v1_cmd }}
+          V2: ${{ github.event.inputs.v2_url }}; V2_CMD: ${{ github.event.inputs.v2_cmd }}
+          A1: ${{ github.event.inputs.a1_url }}; A1_CMD: ${{ github.event.inputs.a1_cmd }}
+          A2: ${{ github.event.inputs.a2_url }}; A2_CMD: ${{ github.event.inputs.a2_cmd }}
+          I1: ${{ github.event.inputs.i1_url }}; I1_CMD: ${{ github.event.inputs.i1_cmd }}
+          I2: ${{ github.event.inputs.i2_url }}; I2_CMD: ${{ github.event.inputs.i2_cmd }}
           T_STAT: ${{ github.event.inputs.t_stat }}
           T_RUN: ${{ github.event.inputs.t_run }}
-          RTMP: ${{ github.event.inputs.rtmp }}
-          KEY: ${{ github.event.inputs.key }}
+          T_COL: ${{ github.event.inputs.t_color }}
+          E_PRE: ${{ github.event.inputs.enc_preset }}
+          E_BIT: ${{ github.event.inputs.enc_bitrate }}
+          RTMP: ${{ github.event.inputs.rtmp_url }}
+          KEY: ${{ github.event.inputs.stream_key }}
         run: |
           echo "=========================================================="
-          echo "🔍 SISTEM ANALISIS TABRAKAN & PERINGATAN OTOMATIS (WARNINGS)"
+          echo "🚨 SISTEM ANALISIS TABRAKAN (WARNINGS)"
           echo "=========================================================="
-          
-          # Validasi Dasar
-          if [ -z "$V1" ]; then echo "⚠️ WARNING: Video Utama Kosong. Menggunakan Kanvas Hitam (Nullsrc)."; fi
-          if [ -n "$V2" ] && [ -n "$V3" ]; then echo "ℹ️ INFO: Multi-PIP Aktif. Pastikan ruang visual cukup agar layar tidak penuh sesak."; fi
-          
-          declare -a FF_CMD
-          FF_CMD=("-y" "-hide_banner")
-          CUR_IDX=0
-
-          # 1. PARSING INPUT VIDEO
-          if [ -n "$V1" ]; then
-            FF_CMD+=("-re" "-stream_loop" "-1" "-i" "$V1")
-            V1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
-          else
-            FF_CMD+=("-f" "lavfi" "-re" "-i" "color=c=black:s=1280x720:r=30")
-            V1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
+          if [[ "$V1_CMD" == *"-re"* ]] && [[ "$V2_CMD" == *"-re"* ]]; then
+            echo "⚠️ PERINGATAN: Flag '-re' ganda terdeteksi. '-re' akan otomatis diabaikan di Video PIP untuk mencegah error desync."
+            V2_CMD="${V2_CMD//-re/}"
           fi
 
-          if [ -n "$V2" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$V2"); V2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); fi
-          if [ -n "$V3" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$V3"); V3_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); fi
+          declare -a FF_CMD=("-y" "-hide_banner")
+          CUR_IDX=0
 
-          # 2. PARSING INPUT AUDIO
+          echo "=========================================================="
+          echo "🛠️ PARSING PARAMETER DARI DROPDOWN GITHUB"
+          echo "=========================================================="
+          
+          # PARSING VIDEO
+          if [ -n "$V1" ]; then
+            if [ "$V1_CMD" != "tanpa_parameter" ]; then read -r -a ARR <<< "$V1_CMD"; FF_CMD+=("${ARR[@]}"); fi
+            FF_CMD+=("-i" "$V1"); V1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
+          fi
+          
+          if [ -n "$V2" ]; then
+            if [ "$V2_CMD" != "tanpa_parameter" ]; then read -r -a ARR <<< "$V2_CMD"; FF_CMD+=("${ARR[@]}"); fi
+            FF_CMD+=("-i" "$V2"); V2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
+          fi
+
+          # PARSING AUDIO
           A_COUNT=0
-          if [ -n "$A1" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$A1"); A1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1)); fi
-          if [ -n "$A2" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$A2"); A2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1)); fi
-          if [ -n "$A3" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$A3"); A3_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1)); fi
+          if [ -n "$A1" ]; then
+            if [ "$A1_CMD" != "tanpa_parameter" ]; then read -r -a ARR <<< "$A1_CMD"; FF_CMD+=("${ARR[@]}"); fi
+            FF_CMD+=("-i" "$A1"); A1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1))
+          fi
+          if [ -n "$A2" ]; then
+            if [ "$A2_CMD" != "tanpa_parameter" ]; then read -r -a ARR <<< "$A2_CMD"; FF_CMD+=("${ARR[@]}"); fi
+            FF_CMD+=("-i" "$A2"); A2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1))
+          fi
 
-          # 3. PARSING INPUT GAMBAR & DETEKSI FORMAT GIF
-          for IMG in "$I1" "$I2" "$I3"; do
+          # PARSING GAMBAR & DETEKSI OTOMATIS GIF
+          for i in 1 2; do
+            IMG_VAR="I${i}"; CMD_VAR="I${i}_CMD"
+            IMG="${!IMG_VAR}"; CMD="${!CMD_VAR}"
+            
             if [ -n "$IMG" ]; then
-              if [[ "$IMG" == *.gif* || "$IMG" == *.GIF* ]]; then
-                echo "✅ INFO: Format GIF terdeteksi pada tautan. Sistem otomatis mengaktifkan parameter animasi (-ignore_loop 0)."
-                FF_CMD+=("-ignore_loop" "0" "-i" "$IMG")
-              else
-                FF_CMD+=("-loop" "1" "-i" "$IMG")
+              if [ "$CMD" = "Otomatis Deteksi (GIF/JPG)" ]; then
+                if [[ "${IMG,,}" == *".gif"* ]]; then CMD="-ignore_loop 0"; else CMD="-loop 1"; fi
+              elif [ "$CMD" = "tanpa_parameter" ]; then
+                CMD=""
               fi
-              if [ "$IMG" = "$I1" ]; then I1_IDX=$CUR_IDX; fi
-              if [ "$IMG" = "$I2" ]; then I2_IDX=$CUR_IDX; fi
-              if [ "$IMG" = "$I3" ]; then I3_IDX=$CUR_IDX; fi
+              
+              if [ -n "$CMD" ]; then read -r -a ARR <<< "$CMD"; FF_CMD+=("${ARR[@]}"); fi
+              FF_CMD+=("-i" "$IMG")
+              eval "I${i}_IDX=$CUR_IDX"
               CUR_IDX=$((CUR_IDX+1))
             fi
           done
 
           echo "=========================================================="
-          echo "⚙️ MEMBANGUN MATRIX FILTER KOMPLEKS (PIPELINE)"
+          echo "⚙️ MEMBANGUN KANVAS FILTER VISUAL"
           echo "=========================================================="
-
-          # 4. MEMBUAT FILTER VIDEO
           FC="[$V1_IDX:v]scale=1280:720,fps=30,setsar=1[v_base];"
           ANCHOR="[v_base]"
 
-          if [ -n "$V2_IDX" ]; then FC="${FC}[$V2_IDX:v]scale=320:-1[v2_s];${ANCHOR}[v2_s]overlay=W-w-20:20:shortest=1[v_v2];"; ANCHOR="[v_v2]"; fi
-          if [ -n "$V3_IDX" ]; then FC="${FC}[$V3_IDX:v]scale=320:-1[v3_s];${ANCHOR}[v3_s]overlay=20:20:shortest=1[v_v3];"; ANCHOR="[v_v3]"; fi
-
-          if [ -n "$I1_IDX" ]; then FC="${FC}[$I1_IDX:v]scale=150:-1[i1_s];${ANCHOR}[i1_s]overlay=W-w-20:H-h-20:shortest=1[v_i1];"; ANCHOR="[v_i1]"; fi
+          if [ -n "$V2_IDX" ]; then FC="${FC}[$V2_IDX:v]scale=320:-1[v2_s];${ANCHOR}[v2_s]overlay=20:20:shortest=1[v_v2];"; ANCHOR="[v_v2]"; fi
+          if [ -n "$I1_IDX" ]; then FC="${FC}[$I1_IDX:v]scale=150:-1[i1_s];${ANCHOR}[i1_s]overlay=W-w-20:20:shortest=1[v_i1];"; ANCHOR="[v_i1]"; fi
           if [ -n "$I2_IDX" ]; then FC="${FC}[$I2_IDX:v]scale=150:-1[i2_s];${ANCHOR}[i2_s]overlay=20:H-h-20:shortest=1[v_i2];"; ANCHOR="[v_i2]"; fi
-          if [ -n "$I3_IDX" ]; then FC="${FC}[$I3_IDX:v]scale=150:-1[i3_s];${ANCHOR}[i3_s]overlay=(W-w)/2:20:shortest=1[v_i3];"; ANCHOR="[v_i3]"; fi
 
-          # Engine Teks Otomatis (Font Linux Default)
-          FONT_PATH="/usr/share/fonts/truetype/freefont/FreeSans.ttf"
+          FONT="/usr/share/fonts/truetype/freefont/FreeSans.ttf"
           if [ -n "$T_STAT" ]; then
-            FC="${FC}${ANCHOR}drawtext=fontfile=${FONT_PATH}:text='${T_STAT}':x=(W-tw)/2:y=H-th-40:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.5[v_ts];"
+            FC="${FC}${ANCHOR}drawtext=fontfile=${FONT}:text='${T_STAT}':x=(W-tw)/2:y=H-th-40:fontsize=28:fontcolor=${T_COL}:box=1:boxcolor=black@0.5[v_ts];"
             ANCHOR="[v_ts]"
           fi
           if [ -n "$T_RUN" ]; then
-            FC="${FC}${ANCHOR}drawtext=fontfile=${FONT_PATH}:text='${T_RUN}':x=W-mod(t*120\,W+tw):y=H-th-10:fontsize=24:fontcolor=yellow:box=1:boxcolor=black@0.6[v_tr];"
+            FC="${FC}${ANCHOR}drawtext=fontfile=${FONT}:text='${T_RUN}':x=W-mod(t*120\,W+tw):y=H-th-10:fontsize=24:fontcolor=${T_COL}:box=1:boxcolor=black@0.6[v_tr];"
             ANCHOR="[v_tr]"
           fi
-
-          # Tutup Pipeline Grafis
           FC="${FC}${ANCHOR}format=yuv420p[v_out]"
 
-          # 5. MEMBUAT FILTER AUDIO (MIXER)
+          # ROUTING AUDIO MIXER
           if [ "$A_COUNT" -gt 0 ]; then
-            A_STREAMS=""
-            if [ -n "$A1_IDX" ]; then A_STREAMS="$A_STREAMS [$A1_IDX:a]"; fi
-            if [ -n "$A2_IDX" ]; then A_STREAMS="$A_STREAMS [$A2_IDX:a]"; fi
-            if [ -n "$A3_IDX" ]; then A_STREAMS="$A_STREAMS [$A3_IDX:a]"; fi
-
+            A_STR=""
+            [ -n "$A1_IDX" ] && A_STR="$A_STR [$A1_IDX:a]"
+            [ -n "$A2_IDX" ] && A_STR="$A_STR [$A2_IDX:a]"
+            
             if [ "$A_COUNT" -eq 1 ]; then
-              A_MAP_TARGET="${A_STREAMS#" "}" # Hapus spasi depan
+              A_TARGET="${A_STR#" "}"
             else
-              FC="${FC}; $A_STREAMS amix=inputs=${A_COUNT}:duration=longest[a_out]"
-              A_MAP_TARGET="[a_out]"
+              FC="${FC}; $A_STR amix=inputs=${A_COUNT}:duration=longest[a_out]"
+              A_TARGET="[a_out]"
             fi
           else
-            if [ -n "$V1" ]; then
-              echo "ℹ️ INFO: Tidak ada input lagu terpisah. Otomatis menarik audio dari Video 1."
-              A_MAP_TARGET="[$V1_IDX:a]?"
-            else
+            A_TARGET="[$V1_IDX:a]?"
+          fi
+
+          FF_CMD+=("-filter_complex" "$FC" "-map" "[v_out]")
+          [ -n "$A_TARGET" ] && FF_CMD+=("-map" "$A_TARGET")
+
+          # ENCODER & OUTPUT
+          FF_CMD+=("-c:v" "libx264" "-preset" "$E_PRE" "-b:v" "$E_BIT" "-maxrate" "$E_BIT" "-bufsize" "$(( ${E_BIT%k} * 2 ))k" "-g" "60")
+          FF_CMD+=("-c:a" "aac" "-b:a" "128k" "-ar" "44100" "-f" "flv" "-flvflags" "no_duration_filesize" "$RTMP/$KEY")
+
+          echo "▶️ MENJALANKAN FFMPEG..."
+          ffmpeg "${FF_CMD[@]}"
