@@ -1,435 +1,188 @@
-name: 👑 FFMPEG MASTER DASHBOARD ULTIMATE
+name: 👑 FFMPEG 8 CLOUD ENGINE (SMART DASHBOARD)
 
 on:
   workflow_dispatch:
     inputs:
-      # ========================================================================
-      # 📥 SLOT 1: REPOSITORI SUMBER MEDIA (MULTI-INPUT INDEX)
-      # ========================================================================
-      video_1:
-        description: '📹 [LAYER 0] Video Utama Fullscreen (WAJIB - Link/Lokal)'
+      # ==========================================
+      # 🎥 KELOMPOK VIDEO (3 KANVAS)
+      # ==========================================
+      v1:
+        description: '📹 [VIDEO 1] Utama (Wajib. Link MP4/M3U8)'
         required: true
         default: 'https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_1mb.mp4'
-      video_2:
-        description: '🎞️ [LAYER 1] Video Tambahan / PIP Overlay (Opsional)'
+      v2:
+        description: '🎞️ [VIDEO 2] Layar PIP Kanan Atas (Opsional)'
         required: false
-      image_1:
-        description: '🖼️ [LAYER 2] Overlay Gambar Statis / GIF Animasi (Opsional)'
-        required: false
-      audio_backsound:
-        description: '🎵 [AUDIO 1] Musik Latar / Backsound Tambahan (Opsional)'
+      v3:
+        description: '🎞️ [VIDEO 3] Layar PIP Kiri Atas (Opsional)'
         required: false
 
-      # ========================================================================
-      # 🔄 SLOT 2: PARAMETER DEMUXING & GLOBAL INPUT CONTROL
-      # ========================================================================
-      in_realtime:
-        description: '⏱️ [Input] Batasi Kecepatan Baca Sesuai Durasi Asli (-re)?'
-        type: choice
-        required: true
-        default: 'ya'
-        options: [ya, tidak]
-      in_loop_video:
-        description: '🔄 [Input] Ulangi Putaran Video Utama Jika Habis (-stream_loop)?'
-        type: choice
-        required: true
-        default: 'tidak'
-        options: [tidak, 'ya (looping tanpa batas)']
-      in_ignore_loop_gif:
-        description: '🎡 [Input] Paksa GIF Animasi Mengulang Selamanya (-ignore_loop 0)?'
-        type: choice
-        required: true
-        default: 'ya'
-        options: [ya, tidak]
-
-      # ========================================================================
-      # ✂️ SLOT 3: GEOMETRI, TRANSFORMASI, & SPASIAL VIDEO (-vf / -filter_complex)
-      # ========================================================================
-      v_scale:
-        description: '📺 [Geometri] Resolusi Skala Output Akhir (scale)'
-        type: choice
-        required: true
-        default: 'ikuti_video_input'
-        options: ['ikuti_video_input', '1920:1080', '1280:720', '854:480', '640:360']
-      v_fps:
-        description: '🎞️ [Geometri] Kunci Kecepatan Frame Rate Per Detik (fps)'
-        type: choice
-        required: true
-        default: '30'
-        options: ['30', '60', '25', '24']
-      v_aspect:
-        description: '📐 [Geometri] Paksa Rasio Aspek Layar Video (setdar)'
-        type: choice
-        required: true
-        default: '16/9'
-        options: ['16/9', '4/3', '21/9', '1/1']
-      v_crop:
-        description: '✂️ [Geometri] Potong Koordinat Piksel Video (crop=w:h:x:y)'
+      # ==========================================
+      # 🎵 KELOMPOK AUDIO (3 JALUR MIXER)
+      # ==========================================
+      a1:
+        description: '🎵 [AUDIO 1] Suara Utama Eksternal (Opsional)'
         required: false
-      v_pad:
-        description: '🔲 [Geometri] Tambah Ketebalan Bingkai Hitam (pad=w:h:x:y)'
+      a2:
+        description: '🔉 [AUDIO 2] BGM / Musik Latar (Opsional)'
         required: false
-      v_transpose:
-        description: '🔄 [Geometri] Rotasi Putar Sudut Arah Video (transpose)'
-        type: choice
-        required: true
-        default: 'normal'
-        options: [normal, '90_searah', '90_berlawanan', '180_derajat']
-      v_hflip:
-        description: '🪞 [Geometri] Efek Cermin Balik Horizontal Kiri-Kanan (hflip)?'
-        type: choice
-        required: true
-        default: 'tidak'
-        options: [tidak, ya]
-      v_vflip:
-        description: '🩻 [Geometri] Efek Cermin Balik Vertikal Atas-Bawah (vflip)?'
-        type: choice
-        required: true
-        default: 'tidak'
-        options: [tidak, ya]
-
-      # ========================================================================
-      # 🎨 SLOT 4: KOREKSI MATRIKS WARNA & RESTORASI KUALITAS VISUAL
-      # ========================================================================
-      c_brightness:
-        description: '☀️ [Warna] Kecerahan Intensitas Cahaya (eq brightness: -1.0 s/d 1.0)'
-        required: true
-        default: '0.0'
-      c_contrast:
-        description: '🌗 [Warna] Kontras Kedalaman Gelap Terang (eq contrast: -2.0 s/d 2.0)'
-        required: true
-        default: '1.0'
-      c_saturation:
-        description: '🌈 [Warna] Kejenuhan Kepadatan Warna (eq saturation: 0.0 s/d 3.0)'
-        required: true
-        default: '1.0'
-      c_gamma:
-        description: '🔮 [Warna] Koreksi Distribusi Gamma Nilai Tengah (eq gamma: 0.1 s/d 10.0)'
-        required: true
-        default: '1.0'
-      f_denoise:
-        description: '✨ [Restorasi] Penumpas Bintik Noise Area Gelap Kamera (hqdn3d)'
-        type: choice
-        required: true
-        default: 'matikan'
-        options: [matikan, 'sedang (4:4:6:6)', 'kuat (6:6:9:9)']
-      f_sharpness:
-        description: '🎯 [Restorasi] Pertajam Detail Guratan Tepian Garis (unsharp)'
-        type: choice
-        required: true
-        default: 'matikan'
-        options: [matikan, 'sedang (5:5:0.8)', 'kuat (7:7:1.2)']
-      f_delogo:
-        description: '🧽 [Restorasi] Sensor Masking/Hapus Noda Watermark (delogo=x:y:w:h)'
+      a3:
+        description: '🔉 [AUDIO 3] BGM / Musik Latar (Opsional)'
         required: false
 
-      # ========================================================================
-      # 🎭 SLOT 5: DINAMIKA TATA LETAK COMPOSITING LAYER (V2 & IMAGE)
-      # ========================================================================
-      v2_scale_width:
-        description: '📐 [Layer V2] Lebar Ukuran Skala Video PIP (Isi -1 untuk Asli)'
-        required: true
-        default: '320'
-      v2_layout_pos:
-        description: '⚙️ [Layer V2] Koordinat Letak Posisi Video PIP di Layar'
-        type: choice
-        required: true
-        default: 'kanan_bawah'
-        options: [kanan_bawah, kiri_bawah, kanan_atas, kiri_atas, tengah]
-      v2_alpha_opacity:
-        description: '🫥 [Layer V2] Tingkat Opasitas/Transparansi Video PIP (0.0 s/d 1.0)'
-        required: true
-        default: '1.0'
-      img1_scale_width:
-        description: '📐 [Layer Img] Lebar Ukuran Skala Gambar Logo (Isi -1 untuk Asli)'
-        required: true
-        default: '180'
-      img1_layout_pos:
-        description: '⚙️ [Layer Img] Koordinat Letak Posisi Gambar Logo di Layar'
-        type: choice
-        required: true
-        default: 'kanan_atas'
-        options: [kanan_atas, kiri_atas, kanan_bawah, kiri_bawah, tengah]
-      img1_alpha_opacity:
-        description: '🫥 [Layer Img] Tingkat Opasitas/Transparansi Gambar Logo (0.0 s/d 1.0)'
-        required: true
-        default: '1.0'
-
-      # ========================================================================
-      # 📝 SLOT 6: GENERATOR LAPISAN METADATA TEKS (DRAWTEXT ENGINE)
-      # ========================================================================
-      t_statis:
-        description: '📝 [Teks 1] Tulisan Teks Statis Banner Info (Kosongkan jika tidak pakai)'
+      # ==========================================
+      # 🖼️ KELOMPOK GAMBAR & LOGO (3 LAYER)
+      # ==========================================
+      i1:
+        description: '🖼️ [GAMBAR 1] Logo / GIF Kanan Bawah (Opsional)'
         required: false
-      t_statis_pos:
-        description: '⚙️ [Teks 1] Letak Posisi Teks Statis Banner'
-        type: choice
-        required: true
-        default: 'atas_kiri'
-        options: [atas_kiri, atas_kanan, bawah_tengah]
-      t_running:
-        description: '🏃 [Teks 2] Tulisan Running Text Berjalan Dinamis (Kosongkan jika tidak pakai)'
+      i2:
+        description: '🖼️ [GAMBAR 2] Logo / GIF Kiri Bawah (Opsional)'
         required: false
-      t_running_speed:
-        description: '⚡ [Teks 2] Kecepatan Laju Running Text (Piksel Per Detik)'
-        required: true
-        default: '100'
-      t_font_color:
-        description: '🎨 [Teks Global] Warna Huruf Font (white, yellow, red, cyan)'
-        required: true
-        default: 'white'
-      t_box_bg:
-        description: '⬛ [Teks Global] Pasang Kotak Latar Belakang Teks (Box)?'
-        type: choice
-        required: true
-        default: 'ya'
-        options: [ya, tidak]
+      i3:
+        description: '🖼️ [GAMBAR 3] Logo / GIF Tengah Atas (Opsional)'
+        required: false
 
-      # ========================================================================
-      # 🎵 SLOT 7: AKUSTIK AUDIO FILTER, MIXER & VOLUME MATRIX
-      # ========================================================================
-      a_vol_main:
-        description: '🔊 [Audio] Faktor Pengganda Volume Video Utama (1.0 = Normal)'
-        required: true
-        default: '1.0'
-      a_vol_backsound:
-        description: '🔉 [Audio] Faktor Pengganda Volume Musik Latar Backsound'
-        required: true
-        default: '0.3'
-      a_highpass:
-        description: '🧹 [Audio] Potong Frekuensi Rendah/Bising Bass (Isi 0 untuk Mati)'
-        required: true
-        default: '0'
-      a_lowpass:
-        description: '🛡️ [Audio] Potong Frekuensi Tinggi/Desis Tajam (Isi 0 untuk Mati)'
-        required: true
-        default: '0'
-      a_sync_engine:
-        description: '⏳ [Audio] Kunci Resample Sinkronisasi Konstan Anti-Desync?'
-        type: choice
-        required: true
-        default: 'aktif'
-        options: [aktif, matikan]
+      # ==========================================
+      # 📝 KELOMPOK METADATA TEKS
+      # ==========================================
+      t_stat:
+        description: '📝 [TEKS] Watermark Teks Diam (Opsional)'
+        required: false
+      t_run:
+        description: '🏃 [TEKS] Running Text Berjalan (Opsional)'
+        required: false
 
-      # ========================================================================
-      # 🚀 SLOT 8: PARAMETER ENCODING, NET KONEKSI & MULTI-TARGET MUXER
-      # ========================================================================
-      enc_preset:
-        description: '⚡ [Encoder] Tingkat Alokasi Kompresi vCPU (Preset)'
-        type: choice
-        required: true
-        default: 'ultrafast'
-        options: [ultrafast, veryfast, fast, medium]
-      enc_v_bitrate:
-        description: '📊 [Encoder] Nilai Rata-Rata Bitrate Aliran Video (Target)'
-        required: true
-        default: '3000k'
-      enc_a_bitrate:
-        description: '🎼 [Encoder] Nilai Rata-Rata Bitrate Aliran Suara/Audio'
-        required: true
-        default: '128k'
-      net_drop_overflow:
-        description: '🛡️ [Jaringan] Buang Frame Jika Koneksi Drop Anti-Freeze (-drop_pkts_on_overflow)?'
-        type: choice
-        required: true
-        default: 'ya'
-        options: [ya, tidak]
-      rtmp_url_1:
-        description: '🚀 [Output 1] Alamat RTMP Server Utama'
+      # ==========================================
+      # 🚀 KELOMPOK TRANSMISI JARINGAN
+      # ==========================================
+      rtmp:
+        description: '🚀 [OUTPUT] RTMP Server URL'
         required: true
         default: 'rtmp://a.rtmp.youtube.com/live2'
-      stream_key_1:
-        description: '🔑 [Output 1] Sandi Stream Key Utama'
+      key:
+        description: '🔑 [OUTPUT] Stream Key (Wajib)'
         required: true
-      rtmp_url_2:
-        description: '🚀 [Output 2] Alamat RTMP Server Tambahan / Simulcast'
-        required: false
-      stream_key_2:
-        description: '🔑 [Output 2] Sandi Stream Key Tambahan'
-        required: false
 
 jobs:
   live-streaming:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Jalankan PPA Dan Pasang FFmpeg 8 Resmi
+      - name: Siapkan Sistem Operasi & Pustaka Font
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -qq > /dev/null
-          sudo apt install -t "o=LP-PPA-ubuntuhandbook1-ffmpeg8" ffmpeg -y -qq > /dev/null
+          # Install FFmpeg & FreeFont untuk Drawtext Engine
+          sudo apt install -t "o=LP-PPA-ubuntuhandbook1-ffmpeg8" ffmpeg -y -qq > /dev/null || sudo apt install ffmpeg -y -qq > /dev/null
+          sudo apt install fonts-freefont-ttf -y -qq > /dev/null
 
-      - name: Konfigurasi Log Versi Sistem
-        run: |
-          ffmpeg -version | head -n 1
-
-      - name: Eksekusi Core Engine Pemancar Cloud Raksasa
+      - name: Eksekusi FFmpeg 8 Smart Engine
         env:
-          V1: ${{ github.event.inputs.video_1 }}
-          V2: ${{ github.event.inputs.video_2 }}
-          I1: ${{ github.event.inputs.image_1 }}
-          ABACK: ${{ github.event.inputs.audio_backsound }}
-          IN_RE: ${{ github.event.inputs.in_realtime }}
-          IN_LOOP: ${{ github.event.inputs.in_loop_video }}
-          IN_GIF: ${{ github.event.inputs.in_ignore_loop_gif }}
-          V_RES: ${{ github.event.inputs.v_scale }}
-          V_FPS: ${{ github.event.inputs.v_fps }}
-          V_ASP: ${{ github.event.inputs.v_aspect }}
-          V_CROP: ${{ github.event.inputs.v_crop }}
-          V_PAD: ${{ github.event.inputs.v_pad }}
-          V_TRANS: ${{ github.event.inputs.v_transpose }}
-          V_HFLIP: ${{ github.event.inputs.v_hflip }}
-          V_VFLIP: ${{ github.event.inputs.v_vflip }}
-          C_BRIGHT: ${{ github.event.inputs.c_brightness }}
-          C_CONT: ${{ github.event.inputs.c_contrast }}
-          C_SAT: ${{ github.event.inputs.c_saturation }}
-          C_GAM: ${{ github.event.inputs.c_gamma }}
-          F_DEN: ${{ github.event.inputs.f_denoise }}
-          F_SHA: ${{ github.event.inputs.f_sharpness }}
-          F_DEL: ${{ github.event.inputs.f_delogo }}
-          V2_W: ${{ github.event.inputs.v2_scale_width }}
-          V2_POS: ${{ github.event.inputs.v2_layout_pos }}
-          V2_OP: ${{ github.event.inputs.v2_alpha_opacity }}
-          I1_W: ${{ github.event.inputs.img1_scale_width }}
-          I1_POS: ${{ github.event.inputs.img1_layout_pos }}
-          I1_OP: ${{ github.event.inputs.img1_alpha_opacity }}
-          T_STAT: ${{ github.event.inputs.t_statis }}
-          T_STAT_P: ${{ github.event.inputs.t_statis_pos }}
-          T_RUN: ${{ github.event.inputs.t_running }}
-          T_RUN_S: ${{ github.event.inputs.t_running_speed }}
-          T_COL: ${{ github.event.inputs.t_font_color }}
-          T_BOX: ${{ github.event.inputs.t_box_bg }}
-          A_VOL1: ${{ github.event.inputs.a_vol_main }}
-          A_VOL2: ${{ github.event.inputs.a_vol_backsound }}
-          A_HP: ${{ github.event.inputs.a_highpass }}
-          A_LP: ${{ github.event.inputs.a_lowpass }}
-          A_SYNC: ${{ github.event.inputs.a_sync_engine }}
-          E_PRE: ${{ github.event.inputs.enc_preset }}
-          E_VBIT: ${{ github.event.inputs.enc_v_bitrate }}
-          E_ABIT: ${{ github.event.inputs.enc_a_bitrate }}
-          N_DROP: ${{ github.event.inputs.net_drop_overflow }}
-          SERVER1: ${{ github.event.inputs.rtmp_url_1 }}
-          KEY1: ${{ github.event.inputs.stream_key_1 }}
-          SERVER2: ${{ github.event.inputs.rtmp_url_2 }}
-          KEY2: ${{ github.event.inputs.stream_key_2 }}
+          V1: ${{ github.event.inputs.v1 }}
+          V2: ${{ github.event.inputs.v2 }}
+          V3: ${{ github.event.inputs.v3 }}
+          A1: ${{ github.event.inputs.a1 }}
+          A2: ${{ github.event.inputs.a2 }}
+          A3: ${{ github.event.inputs.a3 }}
+          I1: ${{ github.event.inputs.i1 }}
+          I2: ${{ github.event.inputs.i2 }}
+          I3: ${{ github.event.inputs.i3 }}
+          T_STAT: ${{ github.event.inputs.t_stat }}
+          T_RUN: ${{ github.event.inputs.t_run }}
+          RTMP: ${{ github.event.inputs.rtmp }}
+          KEY: ${{ github.event.inputs.key }}
         run: |
-          # 1. PARAMETER DEMUXER INPUT
-          DEMUX_FLAGS=""
-          if [ "$IN_RE" = "ya" ]; then DEMUX_FLAGS="$DEMUX_FLAGS -re"; fi
-          if [ "$IN_LOOP" = "ya" ]; then DEMUX_FLAGS="-stream_loop -1 $DEMUX_FLAGS"; fi
-
-          INPUT_COMMAND="$DEMUX_FLAGS -i $V1"
-          NEXT_IDX=1
-          V2_IDX=""; I1_IDX=""; ABACK_IDX=""
-
-          if [ ! -z "$V2" ]; then INPUT_COMMAND="$INPUT_COMMAND $DEMUX_FLAGS -i $V2"; V2_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1)); fi
-          if [ ! -z "$I1" ]; then
-            GIF_FLAGS=""
-            if [[ "$I1" == *.gif ]] && [ "$IN_GIF" = "ya" ]; then GIF_FLAGS="-ignore_loop 0"; fi
-            INPUT_COMMAND="$INPUT_COMMAND $GIF_FLAGS -i $I1"; I1_IDX=$NEXT_IDX; NEXT_IDX=$((NEXT_IDX + 1))
-          fi
-          if [ ! -z "$ABACK" ]; then INPUT_COMMAND="$INPUT_COMMAND -i $ABACK"; ABACK_IDX=$NEXT_IDX; fi
-
-          # 2. LOGIKA BYPASS SCALE (RESOLUSI DEFAULT ASLI VIDEO INPUT)
-          # Jika diatur ke 'ikuti_video_input', kita ganti perintah scale menjadi scale=iw:ih (lebar & tinggi input asli)
-          FINAL_SCALE="$V_RES"
-          if [ "$V_RES" = "ikuti_video_input" ]; then
-            FINAL_SCALE="iw:ih"
-          fi
-
-          # 3. FILTER KANVAS UTAMA VIDEO LINE PIPELINE
-          V_CORE_PIPE="scale=$FINAL_SCALE,fps=$V_FPS,setsar=1,setdar=$V_ASP,eq=brightness=$C_BRIGHT:contrast=$C_CONT:saturation=$C_SAT:gamma=$C_GAM"
+          echo "=========================================================="
+          echo "🔍 SISTEM ANALISIS TABRAKAN & PERINGATAN OTOMATIS (WARNINGS)"
+          echo "=========================================================="
           
-          if [ ! -z "$V_CROP" ]; then V_CORE_PIPE="$V_CORE_PIPE,crop=$V_CROP"; fi
-          if [ ! -z "$V_PAD" ]; then V_CORE_PIPE="$V_CORE_PIPE,pad=$V_PAD"; fi
+          # Validasi Dasar
+          if [ -z "$V1" ]; then echo "⚠️ WARNING: Video Utama Kosong. Menggunakan Kanvas Hitam (Nullsrc)."; fi
+          if [ -n "$V2" ] && [ -n "$V3" ]; then echo "ℹ️ INFO: Multi-PIP Aktif. Pastikan ruang visual cukup agar layar tidak penuh sesak."; fi
           
-          if [ "$V_TRANS" = "90_searah" ]; then V_CORE_PIPE="$V_CORE_PIPE,transpose=1";
-          elif [ "$V_TRANS" = "90_berlawanan" ]; then V_CORE_PIPE="$V_CORE_PIPE,transpose=2";
-          elif [ "$V_TRANS" = "180_derajat" ]; then V_CORE_PIPE="$V_CORE_PIPE,transpose=1,transpose=1"; fi
+          declare -a FF_CMD
+          FF_CMD=("-y" "-hide_banner")
+          CUR_IDX=0
 
-          if [ "$V_HFLIP" = "ya" ]; then V_CORE_PIPE="$V_CORE_PIPE,hflip"; fi
-          if [ "$V_VFLIP" = "ya" ]; then V_CORE_PIPE="$V_CORE_PIPE,vflip"; fi
-
-          if [[ "$F_DEN" == *"sedang"* ]]; then V_CORE_PIPE="$V_CORE_PIPE,hqdn3d=4:4:6:6"; fi
-          if [[ "$F_DEN" == *"kuat"* ]]; then V_CORE_PIPE="$V_CORE_PIPE,hqdn3d=6:6:9:9"; fi
-          if [[ "$F_SHA" == *"sedang"* ]]; then V_CORE_PIPE="$V_CORE_PIPE,unsharp=5:5:0.8:5:5:0.0"; fi
-          if [[ "$F_SHA" == *"kuat"* ]]; then V_CORE_PIPE="$V_CORE_PIPE,unsharp=7:7:1.2:7:7:0.0"; fi
-          if [ ! -z "$F_DEL" ]; then V_CORE_PIPE="$V_CORE_PIPE,delogo=$F_DEL"; fi
-
-          FILTER_COMPLEX="[0:v]$V_CORE_PIPE[v_base_canvas];"
-          CURRENT_V_ANCHOR="[v_base_canvas]"
-
-          calculate_layout() {
-            if [ "$1" = "kanan_bawah" ]; then echo "x=W-w-10:y=H-h-10";
-            elif [ "$1" = "kiri_bawah" ]; then echo "x=10:y=H-h-10";
-            elif [ "$1" = "kanan_atas" ]; then echo "x=W-w-10:y=10";
-            elif [ "$1" = "tengah" ]; then echo "x=(W-w)/2:y=(H-h)/2";
-            else echo "x=10:y=10"; fi
-          }
-
-          # 4. MULTI-LAYER OVERLAY STACK
-          if [ ! -z "$V2_IDX" ]; then
-            FILTER_COMPLEX="${FILTER_COMPLEX}[$V2_IDX:v]scale=${V2_W}:-1,fps=$V_FPS,format=rgba,colorchannelmixer=aa=${V2_OP}[v2_processed];$CURRENT_V_ANCHOR[v2_processed]overlay=$(calculate_layout '$V2_LAY_POS'):shortest=1[v_layer_pip];"
-            CURRENT_V_ANCHOR="[v_layer_pip]"
-          fi
-
-          if [ ! -z "$I1_IDX" ]; then
-            FILTER_COMPLEX="${FILTER_COMPLEX}[$I1_IDX:v]scale=${I1_W}:-1,format=rgba,colorchannelmixer=aa=$I1_OP[img1_processed];$CURRENT_V_ANCHOR[img1_processed]overlay=$(calculate_layout '$I1_LAY_POS'):shortest=1[v_layer_img];"
-            CURRENT_V_ANCHOR="[v_layer_img]"
-          fi
-
-          # 5. DRAWTEXT METADATA ENGINE
-          T_BOX_FLAG="0"
-          if [ "$T_BOX" = "ya" ]; then T_BOX_FLAG="1"; fi
-
-          if [ ! -z "$T_STAT" ]; then
-            if [ "$T_STAT_P" = "atas_kiri" ]; then TX="10"; TY="10";
-            elif [ "$T_STAT_P" = "atas_kanan" ]; then TX="W-tw-10"; TY="10";
-            else TX="(W-tw)/2"; TY="H-th-60"; fi
-            FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V_ANCHOR""drawtext=text='$T_STAT':x=$TX:y=$TY:fontsize=24:fontcolor=$T_COL:box=$T_BOX_FLAG:boxcolor=black@0.5[v_layer_ts];"
-            CURRENT_V_ANCHOR="[v_layer_ts]"
-          fi
-
-          if [ ! -z "$T_RUN" ]; then
-            FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V_ANCHOR""drawtext=text='$T_RUN':x=W-mod(t*$T_RUN_S\,W+tw):y=H-th-15:fontsize=24:fontcolor=$T_COL:box=$T_BOX_FLAG:boxcolor=black@0.6[v_layer_tr];"
-            CURRENT_V_ANCHOR="[v_layer_tr]"
-          fi
-          FILTER_COMPLEX="${FILTER_COMPLEX}$CURRENT_V_ANCHOR""split[v_final_output]"
-
-          # 6. ROUTING FILTER AUDIO ENGINE
-          A_PIPE="volume=$A_VOL1"
-          if [ "$A_SYNC" = "aktif" ]; then A_PIPE="$A_PIPE,aresample=async=1"; fi
-          if [ "$A_HP" != "0" ]; then A_PIPE="$A_PIPE,highpass=f=$A_HP"; fi
-          if [ "$A_LP" != "0" ]; then A_PIPE="$A_PIPE,lowpass=f=$A_LP"; fi
-          
-          FILTER_COMPLEX="${FILTER_COMPLEX};[0:a]$A_PIPE[a_main_stream]"
-
-          if [ ! -z "$ABACK_IDX" ]; then
-            FILTER_COMPLEX="${FILTER_COMPLEX};[$ABACK_IDX:a]volume=$A_VOL2[a_back_stream];[a_main_stream][a_back_stream]amix=inputs=2:duration=first:dropout_transition=2[a_final_output]"
-            MAP_COMMAND="-map [v_final_output] -map [a_final_output]"
+          # 1. PARSING INPUT VIDEO
+          if [ -n "$V1" ]; then
+            FF_CMD+=("-re" "-stream_loop" "-1" "-i" "$V1")
+            V1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
           else
-            MAP_COMMAND="-map [v_final_output] -map [a_main_stream]"
+            FF_CMD+=("-f" "lavfi" "-re" "-i" "color=c=black:s=1280x720:r=30")
+            V1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
           fi
 
-          # 7. MULTI-TARGET MUXING TRANSMISI JARINGAN (TEE)
-          GLOBAL_FLAGS=""
-          if [ "$N_DROP" = "ya" ]; then GLOBAL_FLAGS="-drop_pkts_on_overflow 1"; fi
+          if [ -n "$V2" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$V2"); V2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); fi
+          if [ -n "$V3" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$V3"); V3_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); fi
 
-          URL_MASTER="$SERVER1/$KEY1"
-          MUXER_COMMAND=""
+          # 2. PARSING INPUT AUDIO
+          A_COUNT=0
+          if [ -n "$A1" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$A1"); A1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1)); fi
+          if [ -n "$A2" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$A2"); A2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1)); fi
+          if [ -n "$A3" ]; then FF_CMD+=("-stream_loop" "-1" "-i" "$A3"); A3_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1)); fi
 
-          if [ ! -z "$SERVER2" ] && [ ! -z "$KEY2" ]; then
-            URL_SLAVE="$SERVER2/$KEY2"
-            MUXER_COMMAND="-f tee [f=flv:flvflags=no_duration_filesize]$URL_MASTER|[f=flv:flvflags=no_duration_filesize]$URL_SLAVE"
+          # 3. PARSING INPUT GAMBAR & DETEKSI FORMAT GIF
+          for IMG in "$I1" "$I2" "$I3"; do
+            if [ -n "$IMG" ]; then
+              if [[ "$IMG" == *.gif* || "$IMG" == *.GIF* ]]; then
+                echo "✅ INFO: Format GIF terdeteksi pada tautan. Sistem otomatis mengaktifkan parameter animasi (-ignore_loop 0)."
+                FF_CMD+=("-ignore_loop" "0" "-i" "$IMG")
+              else
+                FF_CMD+=("-loop" "1" "-i" "$IMG")
+              fi
+              if [ "$IMG" = "$I1" ]; then I1_IDX=$CUR_IDX; fi
+              if [ "$IMG" = "$I2" ]; then I2_IDX=$CUR_IDX; fi
+              if [ "$IMG" = "$I3" ]; then I3_IDX=$CUR_IDX; fi
+              CUR_IDX=$((CUR_IDX+1))
+            fi
+          done
+
+          echo "=========================================================="
+          echo "⚙️ MEMBANGUN MATRIX FILTER KOMPLEKS (PIPELINE)"
+          echo "=========================================================="
+
+          # 4. MEMBUAT FILTER VIDEO
+          FC="[$V1_IDX:v]scale=1280:720,fps=30,setsar=1[v_base];"
+          ANCHOR="[v_base]"
+
+          if [ -n "$V2_IDX" ]; then FC="${FC}[$V2_IDX:v]scale=320:-1[v2_s];${ANCHOR}[v2_s]overlay=W-w-20:20:shortest=1[v_v2];"; ANCHOR="[v_v2]"; fi
+          if [ -n "$V3_IDX" ]; then FC="${FC}[$V3_IDX:v]scale=320:-1[v3_s];${ANCHOR}[v3_s]overlay=20:20:shortest=1[v_v3];"; ANCHOR="[v_v3]"; fi
+
+          if [ -n "$I1_IDX" ]; then FC="${FC}[$I1_IDX:v]scale=150:-1[i1_s];${ANCHOR}[i1_s]overlay=W-w-20:H-h-20:shortest=1[v_i1];"; ANCHOR="[v_i1]"; fi
+          if [ -n "$I2_IDX" ]; then FC="${FC}[$I2_IDX:v]scale=150:-1[i2_s];${ANCHOR}[i2_s]overlay=20:H-h-20:shortest=1[v_i2];"; ANCHOR="[v_i2]"; fi
+          if [ -n "$I3_IDX" ]; then FC="${FC}[$I3_IDX:v]scale=150:-1[i3_s];${ANCHOR}[i3_s]overlay=(W-w)/2:20:shortest=1[v_i3];"; ANCHOR="[v_i3]"; fi
+
+          # Engine Teks Otomatis (Font Linux Default)
+          FONT_PATH="/usr/share/fonts/truetype/freefont/FreeSans.ttf"
+          if [ -n "$T_STAT" ]; then
+            FC="${FC}${ANCHOR}drawtext=fontfile=${FONT_PATH}:text='${T_STAT}':x=(W-tw)/2:y=H-th-40:fontsize=28:fontcolor=white:box=1:boxcolor=black@0.5[v_ts];"
+            ANCHOR="[v_ts]"
+          fi
+          if [ -n "$T_RUN" ]; then
+            FC="${FC}${ANCHOR}drawtext=fontfile=${FONT_PATH}:text='${T_RUN}':x=W-mod(t*120\,W+tw):y=H-th-10:fontsize=24:fontcolor=yellow:box=1:boxcolor=black@0.6[v_tr];"
+            ANCHOR="[v_tr]"
+          fi
+
+          # Tutup Pipeline Grafis
+          FC="${FC}${ANCHOR}format=yuv420p[v_out]"
+
+          # 5. MEMBUAT FILTER AUDIO (MIXER)
+          if [ "$A_COUNT" -gt 0 ]; then
+            A_STREAMS=""
+            if [ -n "$A1_IDX" ]; then A_STREAMS="$A_STREAMS [$A1_IDX:a]"; fi
+            if [ -n "$A2_IDX" ]; then A_STREAMS="$A_STREAMS [$A2_IDX:a]"; fi
+            if [ -n "$A3_IDX" ]; then A_STREAMS="$A_STREAMS [$A3_IDX:a]"; fi
+
+            if [ "$A_COUNT" -eq 1 ]; then
+              A_MAP_TARGET="${A_STREAMS#" "}" # Hapus spasi depan
+            else
+              FC="${FC}; $A_STREAMS amix=inputs=${A_COUNT}:duration=longest[a_out]"
+              A_MAP_TARGET="[a_out]"
+            fi
           else
-            MUXER_COMMAND="-f flv -flvflags no_duration_filesize $URL_MASTER"
-          fi
-
-          # 8. RUNTIME EXECUTION final
-          ffmpeg -y $GLOBAL_FLAGS $INPUT_COMMAND \
-            -filter_complex "$FILTER_COMPLEX" \
-            $MAP_COMMAND \
-            -c:v libx264 -preset $E_PRE -b:v $E_VBIT -maxrate $E_VBIT -bufsize $(( ${E_VBIT%k} * 2 ))k \
-            -pix_fmt yuv420p -g $(( V_FPS * 2 )) -async 1 \
-            -c:a aac -b:a $E_ABIT \
-            $MUXER_COMMAND
+            if [ -n "$V1" ]; then
+              echo "ℹ️ INFO: Tidak ada input lagu terpisah. Otomatis menarik audio dari Video 1."
+              A_MAP_TARGET="[$V1_IDX:a]?"
+            else
