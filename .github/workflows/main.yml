@@ -216,39 +216,32 @@ jobs:
           sudo apt install ffmpeg -y -qq > /dev/null
           
       - name: Jalankan Core Engine FFmpeg
+        env:
+          MANUAL_CMD: ${{ github.event.inputs.manual_cmd }}
+          VIDEO: ${{ github.event.inputs.video }}
+          IS_LOOP: ${{ github.event.inputs.is_loop }}
+          IS_RE: ${{ github.event.inputs.is_re }}
+          V_LAYOUT: ${{ github.event.inputs.video_layout }}
+          V_CODEC: ${{ github.event.inputs.video_codec }}
+          V_PRESET: ${{ github.event.inputs.video_preset }}
+          V_BITRATE: ${{ github.event.inputs.video_bitrate }}
+          V_FPS: ${{ github.event.inputs.video_fps }}
+          AUDIO: ${{ github.event.inputs.audio }}
+          A_MIX: ${{ github.event.inputs.audio_mix }}
+          A_CODEC: ${{ github.event.inputs.audio_codec }}
+          A_BITRATE: ${{ github.event.inputs.audio_bitrate }}
+          A_VOL_MAIN: ${{ github.event.inputs.audio_volume_main }}
+          A_VOL_EXT: ${{ github.event.inputs.audio_volume_ext }}
+          IMAGE: ${{ github.event.inputs.image }}
+          IMG_SCALE: ${{ github.event.inputs.image_scale }}
+          IMG_POS: ${{ github.event.inputs.image_pos }}
+          TEXT: ${{ github.event.inputs.text }}
+          TXT_COLOR: ${{ github.event.inputs.text_color }}
+          TXT_SIZE: ${{ github.event.inputs.text_size }}
+          TXT_POS: ${{ github.event.inputs.text_pos }}
+          RTMP: ${{ github.event.inputs.rtmp_link }}
+          KEY: ${{ github.event.inputs.stream_key }}
         run: |
-          # Load data input utama manual
-          MANUAL_CMD="${{ github.event.inputs.manual_cmd }}"
-          
-          # Load data input dropdown
-          VIDEO="${{ github.event.inputs.video }}"
-          IS_LOOP="${{ github.event.inputs.is_loop }}"
-          IS_RE="${{ github.event.inputs.is_re }}"
-          V_LAYOUT="${{ github.event.inputs.video_layout }}"
-          V_CODEC="${{ github.event.inputs.video_codec }}"
-          V_PRESET="${{ github.event.inputs.video_preset }}"
-          V_BITRATE="${{ github.event.inputs.video_bitrate }}"
-          V_FPS="${{ github.event.inputs.video_fps }}"
-          
-          AUDIO="${{ github.event.inputs.audio }}"
-          A_MIX="${{ github.event.inputs.audio_mix }}"
-          A_CODEC="${{ github.event.inputs.audio_codec }}"
-          A_BITRATE="${{ github.event.inputs.audio_bitrate }}"
-          A_VOL_MAIN="${{ github.event.inputs.audio_volume_main }}"
-          A_VOL_EXT="${{ github.event.inputs.audio_volume_ext }}"
-          
-          IMAGE="${{ github.event.inputs.image }}"
-          IMG_SCALE="${{ github.event.inputs.image_scale }}"
-          IMG_POS="${{ github.event.inputs.image_pos }}"
-          
-          TEXT="${{ github.event.inputs.text }}"
-          TXT_COLOR="${{ github.event.inputs.text_color }}"
-          TXT_SIZE="${{ github.event.inputs.text_size }}"
-          TXT_POS="${{ github.event.inputs.text_pos }}"
-          
-          RTMP="${{ github.event.inputs.rtmp_link }}"
-          KEY="${{ github.event.inputs.stream_key }}"
-
           while true; do
             # ---------------------------------------------------------
             # SAKELAR OTOMATIS: JIKA KOLOM MANUAL DIISI
@@ -368,7 +361,7 @@ jobs:
             fi
 
             # ---------------------------------------------------------
-            # EKSEKUSI PERINTAH (MANUAL / OTOMATIS)
+            # EKSEKUSI PERINTAH FINAL (MANUAL / AUTOMATIC) + PROTECTION
             # ---------------------------------------------------------
             echo "Menjalankan perintah: $CMD"
             eval $CMD
