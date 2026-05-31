@@ -1,77 +1,163 @@
-name: FFmpeg Essential Livestream Anti-Putus
+name: FFmpeg Modular Livestream
 
 on:
   workflow_dispatch:
     inputs:
-      # =========================
-      # 1. INPUT & PENGATURAN DASAR
-      # =========================
+      # =========================================================
+      # 1. KELOMPOK VIDEO (INPUT & COMMAND)
+      # =========================================================
       video:
-        description: 'Input Video (URL m3u8 atau Nama File)'
+        description: '▶️ [INPUT VIDEO] URL (m3u8/mp4) atau Nama File'
         required: true
         default: 'input.mp4'
       is_loop:
-        description: 'Loop Video? (-stream_loop)'
+        description: '   ↳ Command Video: Loop Video? (-stream_loop)'
         type: choice
         options:
           - default (Tanpa Loop)
           - Loop Terus Menerus (-1)
         default: 'default (Tanpa Loop)'
       is_re:
-        description: 'Gunakan Realtime? (-re)'
+        description: '   ↳ Command Video: Kecepatan Asli? (-re)'
         type: choice
         options:
           - default (Gunakan -re)
           - Tanpa -re (Maksimal Speed)
         default: 'default (Gunakan -re)'
-
-      # =========================
-      # 2. PENGATURAN ENCODING (KUALITAS)
-      # =========================
       video_codec:
-        description: 'Video Codec'
+        description: '   ↳ Command Video: Codec (-c:v)'
         type: choice
         options:
           - default (copy)
           - libx264
+          - libx265
         default: 'default (copy)'
       video_preset:
-        description: 'Preset Kecepatan (Jika pakai libx264)'
+        description: '   ↳ Command Video: Preset Kecepatan (Untuk x264/x265)'
         type: choice
         options:
           - default (none)
           - ultrafast
           - veryfast
+          - medium
         default: 'default (none)'
       video_bitrate:
-        description: 'Video Bitrate (Misal: 2500k)'
+        description: '   ↳ Command Video: Bitrate (Misal: 2500k atau 4M)'
+        required: false
+        default: ''
+      video_fps:
+        description: '   ↳ Command Video: Batasi FPS (-r)'
+        type: choice
+        options:
+          - default (Asli)
+          - 30
+          - 60
+        default: 'default (Asli)'
+
+      # =========================================================
+      # 2. KELOMPOK AUDIO (INPUT & COMMAND)
+      # =========================================================
+      audio:
+        description: '🎵 [INPUT AUDIO] Opsional (Kosongkan jika pakai audio asli video)'
         required: false
         default: ''
       audio_codec:
-        description: 'Audio Codec'
+        description: '   ↳ Command Audio: Codec (-c:a)'
         type: choice
         options:
           - default (copy)
           - aac
+          - libmp3lame
         default: 'default (copy)'
-        
-      # =========================
-      # 3. COMMAND TAMBAHAN
-      # =========================
-      extra_cmd:
-        description: 'Command Ekstra (Opsional)'
+      audio_bitrate:
+        description: '   ↳ Command Audio: Bitrate Audio'
+        type: choice
+        options:
+          - default (Asli)
+          - 128k
+          - 192k
+          - 256k
+        default: 'default (Asli)'
+      audio_volume:
+        description: '   ↳ Command Audio: Sesuaikan Volume (-af volume)'
+        type: choice
+        options:
+          - default (Normal)
+          - 0.5 (Setengah)
+          - 1.5 (Lebih Keras)
+          - 2.0 (Dua Kali Lipat)
+        default: 'default (Normal)'
+
+      # =========================================================
+      # 3. KELOMPOK GAMBAR / WATERMARK (INPUT & COMMAND)
+      # =========================================================
+      image:
+        description: '🖼️ [INPUT GAMBAR] URL/File (Kosongkan jika tidak ada)'
         required: false
         default: ''
+      image_scale:
+        description: '   ↳ Command Gambar: Ukuran / Lebar Gambar'
+        type: choice
+        options:
+          - default (Ukuran Asli)
+          - 100:-1 (Lebar 100px)
+          - 200:-1 (Lebar 200px)
+          - 300:-1 (Lebar 300px)
+        default: 'default (Ukuran Asli)'
+      image_pos:
+        description: '   ↳ Command Gambar: Posisi Overlay'
+        type: choice
+        options:
+          - default (Kanan Atas)
+          - Kiri Atas
+          - Kanan Bawah
+          - Kiri Bawah
+        default: 'default (Kanan Atas)'
 
-      # =========================
-      # 4. DESTINASI STREAM
-      # =========================
+      # =========================================================
+      # 4. KELOMPOK TEKS / OVERLAY (INPUT & COMMAND)
+      # =========================================================
+      text:
+        description: '📝 [INPUT TEKS] Ketik Teks (Kosongkan jika tidak ada)'
+        required: false
+        default: ''
+      text_color:
+        description: '   ↳ Command Teks: Warna Tulisan'
+        type: choice
+        options:
+          - default (white)
+          - red
+          - yellow
+          - black
+        default: 'default (white)'
+      text_size:
+        description: '   ↳ Command Teks: Ukuran Font'
+        type: choice
+        options:
+          - default (24)
+          - 36
+          - 48
+          - 72
+        default: 'default (24)'
+      text_pos:
+        description: '   ↳ Command Teks: Posisi Tulisan'
+        type: choice
+        options:
+          - default (Bawah Tengah)
+          - Kiri Atas
+          - Kanan Atas
+          - Tengah Screen
+        default: 'default (Bawah Tengah)'
+
+      # =========================================================
+      # 5. DESTINASI OUTPUT STREAM
+      # =========================================================
       rtmp_link:
-        description: 'Link RTMP Server'
+        description: '🚀 Link RTMP Server'
         required: true
         default: 'rtmp://a.rtmp.youtube.com/live2'
       stream_key:
-        description: 'Stream Key'
+        description: '🔑 Stream Key'
         required: true
         default: ''
 
@@ -81,66 +167,154 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      
       - name: Set up FFmpeg 8
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
           sudo apt install ffmpeg -y -qq > /dev/null
           
-      - name: Jalankan FFmpeg Stream
+      - name: Jalankan Core Engine FFmpeg
         run: |
+          # Load data input dari workflow
           VIDEO="${{ github.event.inputs.video }}"
           IS_LOOP="${{ github.event.inputs.is_loop }}"
           IS_RE="${{ github.event.inputs.is_re }}"
-          
           V_CODEC="${{ github.event.inputs.video_codec }}"
           V_PRESET="${{ github.event.inputs.video_preset }}"
           V_BITRATE="${{ github.event.inputs.video_bitrate }}"
+          V_FPS="${{ github.event.inputs.video_fps }}"
           
+          AUDIO="${{ github.event.inputs.audio }}"
           A_CODEC="${{ github.event.inputs.audio_codec }}"
-          EXTRA_CMD="${{ github.event.inputs.extra_cmd }}"
+          A_BITRATE="${{ github.event.inputs.audio_bitrate }}"
+          A_VOLUME="${{ github.event.inputs.audio_volume }}"
+          
+          IMAGE="${{ github.event.inputs.image }}"
+          IMG_SCALE="${{ github.event.inputs.image_scale }}"
+          IMG_POS="${{ github.event.inputs.image_pos }}"
+          
+          TEXT="${{ github.event.inputs.text }}"
+          TXT_COLOR="${{ github.event.inputs.text_color }}"
+          TXT_SIZE="${{ github.event.inputs.text_size }}"
+          TXT_POS="${{ github.event.inputs.text_pos }}"
           
           RTMP="${{ github.event.inputs.rtmp_link }}"
           KEY="${{ github.event.inputs.stream_key }}"
 
           while true; do
-            echo "Memulai proses perakitan command..."
+            echo "Menyusun komponen perintah..."
             CMD="ffmpeg"
             
-            # 1. Parameter Input (Loop & Realtime)
+            # 1. PENGATURAN INPUT GLOBAL VIDEO
             if [[ "$IS_RE" == "default (Gunakan -re)" ]]; then CMD="$CMD -re"; fi
             if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
-            
-            # 2. FITUR AUTO-RECONNECT KHUSUS M3U8/HTTP
-            # Mencegah disconnect ke YouTube saat m3u8 sumber patah-patah
             if [[ "$VIDEO" == "http"* ]]; then
               CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
             fi
-            
             CMD="$CMD -i \"$VIDEO\""
             
-            # 3. Parameter Video
-            if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
-            if [[ "$V_PRESET" != "default"* ]]; then CMD="$CMD -preset $V_PRESET"; fi
+            # 2. PENGATURAN INPUT AUDIO TAMBAHAN
+            AUDIO_PRESENT=0
+            if [[ -n "$AUDIO" ]]; then
+              AUDIO_PRESENT=1
+              if [[ "$AUDIO" == "http"* ]]; then
+                CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
+              fi
+              CMD="$CMD -i \"$AUDIO\""
+            fi
+            
+            # 3. PENGATURAN INPUT GAMBAR OVERLAY
+            IMAGE_PRESENT=0
+            if [[ -n "$IMAGE" ]]; then
+              IMAGE_PRESENT=1
+              if [[ "$IMAGE" == "http"* ]]; then
+                CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
+              fi
+              CMD="$CMD -i \"$IMAGE\""
+            fi
+            
+            # 4. PEMPROSESAN FILTER KOMPLEKS (GAMBAR & TEKS)
+            FILTER=""
+            V_MAP="0:v"
+            A_MAP="0:a"
+            if [[ "$AUDIO_PRESENT" -eq 1 ]]; then A_MAP="1:a"; fi
+            
+            # Filter Gambar
+            if [[ "$IMAGE_PRESENT" -eq 1 ]]; then
+              IMG_IDX="1"; if [[ "$AUDIO_PRESENT" -eq 1 ]]; then IMG_IDX="2"; fi
+              SCALE_CMD=""
+              if [[ "$IMG_SCALE" != "default"* ]]; then SCALE_CMD="scale=$IMG_SCALE,"; fi
+              
+              POS="W-w-10:10"
+              if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
+              if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
+              if [[ "$IMG_POS" == "Kiri Bawah" ]]; then POS="10:H-h-10"; fi
+              
+              FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS[v_img];"
+              V_MAP="v_img"
+            fi
+            
+            # Filter Teks
+            if [[ -n "$TEXT" ]]; then
+              COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
+              SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
+              
+              T_X="10"; T_Y="H-h-30"
+              if [[ "$TXT_POS" == "Bawah Tengah" ]]; then T_X="(W-w)/2"; T_Y="H-h-30"; fi
+              if [[ "$TXT_POS" == "Kiri Atas" ]]; then T_X="10"; T_Y="10"; fi
+              if [[ "$TXT_POS" == "Kanan Atas" ]]; then T_X="W-w-10"; T_Y="10"; fi
+              if [[ "$TXT_POS" == "Tengah Screen" ]]; then T_X="(W-w)/2"; T_Y="(H-h)/2"; fi
+              
+              FILTER="${FILTER}[$V_MAP]drawtext=text='$TEXT':fontcolor=$COLOR:fontsize=$SIZE:x=$T_X:y=$T_Y[v_txt];"
+              V_MAP="v_txt"
+            fi
+            
+            # Terapkan Filter Kompleks Ke Command
+            FORCE_ENCODE=0
+            if [[ -n "$FILTER" ]]; then
+              FILTER=${FILTER%?} # Hapus titik koma di ujung
+              CMD="$CMD -filter_complex \"$FILTER\" -map \"[$V_MAP]\""
+              FORCE_ENCODE=1
+            else
+              CMD="$CMD -map 0:v?"
+            fi
+            
+            # 5. ATUR LOGIKA DEFAULT UNTUK ENCODING VIDEO
+            if [[ "$FORCE_ENCODE" -eq 1 ]]; then
+              if [[ "$V_CODEC" == "default"* ]]; then V_CODEC="libx264"; fi
+              CMD="$CMD -c:v $V_CODEC"
+            else
+              if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
+            fi
+            
+            if [[ "$V_PRESET" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -preset $V_PRESET"; fi
             if [[ -n "$V_BITRATE" ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
+            if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
             
-            # 4. Parameter Audio
-            if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
+            # 6. ATUR LOGIKA DEFAULT UNTUK ENCODING AUDIO
+            if [[ "$A_VOLUME" != "default"* ]]; then
+              CMD="$CMD -af \"volume=$A_VOLUME\""
+              if [[ "$A_CODEC" == "default"* ]]; then A_CODEC="aac"; fi
+              CMD="$CMD -c:a $A_CODEC"
+            else
+              CMD="$CMD -map $A_MAP?"
+              if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
+            fi
             
-            # 5. Command Bebas
-            if [[ -n "$EXTRA_CMD" ]]; then CMD="$CMD $EXTRA_CMD"; fi
+            if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
             
-            # 6. Output
+            # 7. OUTPUT FINAL
             CMD="$CMD -f flv \"$RTMP/$KEY\""
             
-            echo "Menjalankan: $CMD"
+            echo "Eksekusi Perintah: $CMD"
             eval $CMD
             
             if [ $? -ne 0 ]; then
-              echo "Server M3U8 mati total atau error kritis. Merestart paksa FFmpeg dalam 5 detik..."
+              echo "Koneksi terputus/Timeout. Mencoba menyambung kembali dalam 5 detik..."
               sleep 5
             else
-              echo "Stream selesai tanpa error."
+              echo "Selesai."
               break
             fi
           done
