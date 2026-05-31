@@ -1,73 +1,67 @@
-name: 👑 FFMPEG 8 ULTIMATE DROPDOWN DASHBOARD
+name: 👑 FFMPEG 8 ULTIMATE FREESTYLE DASHBOARD
 
 on:
   workflow_dispatch:
     inputs:
       # ==========================================================
-      # 🎥 KELOMPOK VIDEO (Pilihan Dropdown)
+      # 🎥 KELOMPOK VIDEO
       # ==========================================================
       v1_url:
         description: '🔗 [VIDEO 1] Link Utama (Wajib)'
         required: true
       v1_cmd:
-        description: '⚙️ [VIDEO 1] Mode Putar'
-        type: choice
-        options: ['-re -stream_loop -1', '-re', '-stream_loop -1', 'tanpa_parameter']
+        description: '⚙️ [VIDEO 1] Flag Input (Hapus jika tidak pakai)'
+        required: false
         default: '-re -stream_loop -1'
         
       v2_url:
         description: '🔗 [VIDEO 2] Link PIP Overlay (Opsional)'
         required: false
       v2_cmd:
-        description: '⚙️ [VIDEO 2] Mode Putar PIP'
-        type: choice
-        options: ['-stream_loop -1', 'tanpa_parameter']
+        description: '⚙️ [VIDEO 2] Flag Input'
+        required: false
         default: '-stream_loop -1'
 
       # ==========================================================
-      # 🎵 KELOMPOK AUDIO (Pilihan Dropdown)
+      # 🎵 KELOMPOK AUDIO
       # ==========================================================
       a1_url:
         description: '🔗 [AUDIO 1] Link Musik Utama (Opsional)'
         required: false
       a1_cmd:
-        description: '⚙️ [AUDIO 1] Mode Loop Musik'
-        type: choice
-        options: ['-stream_loop -1', 'tanpa_parameter']
+        description: '⚙️ [AUDIO 1] Flag Input'
+        required: false
         default: '-stream_loop -1'
 
       a2_url:
         description: '🔗 [AUDIO 2] Link Backsound (Opsional)'
         required: false
       a2_cmd:
-        description: '⚙️ [AUDIO 2] Mode Loop Backsound'
-        type: choice
-        options: ['-stream_loop -1', 'tanpa_parameter']
+        description: '⚙️ [AUDIO 2] Flag Input'
+        required: false
         default: '-stream_loop -1'
 
       # ==========================================================
-      # 🖼️ KELOMPOK GAMBAR/GIF (Pilihan Dropdown)
+      # 🖼️ KELOMPOK GAMBAR/GIF
       # ==========================================================
       i1_url:
         description: '🔗 [GAMBAR 1] Link Logo / GIF Kanan Atas (Opsional)'
         required: false
       i1_cmd:
-        description: '⚙️ [GAMBAR 1] Mode Animasi'
-        type: choice
-        options: ['Otomatis Deteksi (GIF/JPG)', '-ignore_loop 0', '-loop 1', 'tanpa_parameter']
-        default: 'Otomatis Deteksi (GIF/JPG)'
+        description: '⚙️ [GAMBAR 1] Flag Input (-ignore_loop 0 utk GIF, -loop 1 utk JPG)'
+        required: false
+        default: '-loop 1'
 
       i2_url:
         description: '🔗 [GAMBAR 2] Link Logo / GIF Kiri Bawah (Opsional)'
         required: false
       i2_cmd:
-        description: '⚙️ [GAMBAR 2] Mode Animasi'
-        type: choice
-        options: ['Otomatis Deteksi (GIF/JPG)', '-ignore_loop 0', '-loop 1', 'tanpa_parameter']
-        default: 'Otomatis Deteksi (GIF/JPG)'
+        description: '⚙️ [GAMBAR 2] Flag Input'
+        required: false
+        default: '-loop 1'
 
       # ==========================================================
-      # 📝 KELOMPOK TEKS (Pilihan Dropdown)
+      # 📝 KELOMPOK TEKS
       # ==========================================================
       t_stat:
         description: '📝 [TEKS] Watermark Diam (Opsional)'
@@ -76,24 +70,17 @@ on:
         description: '🏃 [TEKS] Running Text Berjalan (Opsional)'
         required: false
       t_color:
-        description: '🎨 [TEKS] Warna Tulisan'
-        type: choice
-        options: ['white', 'yellow', 'red', 'cyan', 'green']
+        description: '🎨 [TEKS] Warna Tulisan (white, yellow, red, cyan)'
+        required: false
         default: 'white'
 
       # ==========================================================
-      # 🚀 KELOMPOK ENCODER & SERVER (Pilihan Dropdown)
+      # 🚀 KELOMPOK ENCODER & SERVER
       # ==========================================================
-      enc_preset:
-        description: '⚡ [ENCODER] Preset Kecepatan CPU'
-        type: choice
-        options: ['ultrafast', 'veryfast', 'fast', 'medium']
-        default: 'veryfast'
-      enc_bitrate:
-        description: '📊 [ENCODER] Target Bitrate Video'
-        type: choice
-        options: ['1500k', '2500k', '3500k', '4500k', '6000k']
-        default: '2500k'
+      out_cmd:
+        description: '⚡ [ENCODER] Parameter Video & Audio Output'
+        required: false
+        default: '-c:v libx264 -preset veryfast -b:v 2500k -maxrate 2500k -bufsize 5000k -g 60 -c:a aac -b:a 128k -ar 44100'
       rtmp_url:
         description: '🚀 [SERVER] RTMP URL'
         required: true
@@ -115,25 +102,30 @@ jobs:
 
       - name: Eksekusi FFmpeg Smart Backend
         env:
-          V1: ${{ github.event.inputs.v1_url }}; V1_CMD: ${{ github.event.inputs.v1_cmd }}
-          V2: ${{ github.event.inputs.v2_url }}; V2_CMD: ${{ github.event.inputs.v2_cmd }}
-          A1: ${{ github.event.inputs.a1_url }}; A1_CMD: ${{ github.event.inputs.a1_cmd }}
-          A2: ${{ github.event.inputs.a2_url }}; A2_CMD: ${{ github.event.inputs.a2_cmd }}
-          I1: ${{ github.event.inputs.i1_url }}; I1_CMD: ${{ github.event.inputs.i1_cmd }}
-          I2: ${{ github.event.inputs.i2_url }}; I2_CMD: ${{ github.event.inputs.i2_cmd }}
+          V1: ${{ github.event.inputs.v1_url }}
+          V1_CMD: ${{ github.event.inputs.v1_cmd }}
+          V2: ${{ github.event.inputs.v2_url }}
+          V2_CMD: ${{ github.event.inputs.v2_cmd }}
+          A1: ${{ github.event.inputs.a1_url }}
+          A1_CMD: ${{ github.event.inputs.a1_cmd }}
+          A2: ${{ github.event.inputs.a2_url }}
+          A2_CMD: ${{ github.event.inputs.a2_cmd }}
+          I1: ${{ github.event.inputs.i1_url }}
+          I1_CMD: ${{ github.event.inputs.i1_cmd }}
+          I2: ${{ github.event.inputs.i2_url }}
+          I2_CMD: ${{ github.event.inputs.i2_cmd }}
           T_STAT: ${{ github.event.inputs.t_stat }}
           T_RUN: ${{ github.event.inputs.t_run }}
           T_COL: ${{ github.event.inputs.t_color }}
-          E_PRE: ${{ github.event.inputs.enc_preset }}
-          E_BIT: ${{ github.event.inputs.enc_bitrate }}
+          OUT_CMD: ${{ github.event.inputs.out_cmd }}
           RTMP: ${{ github.event.inputs.rtmp_url }}
           KEY: ${{ github.event.inputs.stream_key }}
         run: |
           echo "=========================================================="
-          echo "🚨 SISTEM ANALISIS TABRAKAN (WARNINGS)"
+          echo "🚨 ANALISIS PARAMETER INPUT"
           echo "=========================================================="
           if [[ "$V1_CMD" == *"-re"* ]] && [[ "$V2_CMD" == *"-re"* ]]; then
-            echo "⚠️ PERINGATAN: Flag '-re' ganda terdeteksi. '-re' akan otomatis diabaikan di Video PIP untuk mencegah error desync."
+            echo "⚠️ PERINGATAN: Flag '-re' ganda terdeteksi! Dihapus dari PIP untuk cegah error."
             V2_CMD="${V2_CMD//-re/}"
           fi
 
@@ -141,43 +133,37 @@ jobs:
           CUR_IDX=0
 
           echo "=========================================================="
-          echo "🛠️ PARSING PARAMETER DARI DROPDOWN GITHUB"
+          echo "🛠️ PARSING MATRIX INPUT"
           echo "=========================================================="
           
           # PARSING VIDEO
           if [ -n "$V1" ]; then
-            if [ "$V1_CMD" != "tanpa_parameter" ]; then read -r -a ARR <<< "$V1_CMD"; FF_CMD+=("${ARR[@]}"); fi
+            if [ -n "$V1_CMD" ]; then read -r -a ARR <<< "$V1_CMD"; FF_CMD+=("${ARR[@]}"); fi
             FF_CMD+=("-i" "$V1"); V1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
           fi
           
           if [ -n "$V2" ]; then
-            if [ "$V2_CMD" != "tanpa_parameter" ]; then read -r -a ARR <<< "$V2_CMD"; FF_CMD+=("${ARR[@]}"); fi
+            if [ -n "$V2_CMD" ]; then read -r -a ARR <<< "$V2_CMD"; FF_CMD+=("${ARR[@]}"); fi
             FF_CMD+=("-i" "$V2"); V2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
           fi
 
           # PARSING AUDIO
           A_COUNT=0
           if [ -n "$A1" ]; then
-            if [ "$A1_CMD" != "tanpa_parameter" ]; then read -r -a ARR <<< "$A1_CMD"; FF_CMD+=("${ARR[@]}"); fi
+            if [ -n "$A1_CMD" ]; then read -r -a ARR <<< "$A1_CMD"; FF_CMD+=("${ARR[@]}"); fi
             FF_CMD+=("-i" "$A1"); A1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1))
           fi
           if [ -n "$A2" ]; then
-            if [ "$A2_CMD" != "tanpa_parameter" ]; then read -r -a ARR <<< "$A2_CMD"; FF_CMD+=("${ARR[@]}"); fi
+            if [ -n "$A2_CMD" ]; then read -r -a ARR <<< "$A2_CMD"; FF_CMD+=("${ARR[@]}"); fi
             FF_CMD+=("-i" "$A2"); A2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1))
           fi
 
-          # PARSING GAMBAR & DETEKSI OTOMATIS GIF
+          # PARSING GAMBAR
           for i in 1 2; do
             IMG_VAR="I${i}"; CMD_VAR="I${i}_CMD"
             IMG="${!IMG_VAR}"; CMD="${!CMD_VAR}"
             
             if [ -n "$IMG" ]; then
-              if [ "$CMD" = "Otomatis Deteksi (GIF/JPG)" ]; then
-                if [[ "${IMG,,}" == *".gif"* ]]; then CMD="-ignore_loop 0"; else CMD="-loop 1"; fi
-              elif [ "$CMD" = "tanpa_parameter" ]; then
-                CMD=""
-              fi
-              
               if [ -n "$CMD" ]; then read -r -a ARR <<< "$CMD"; FF_CMD+=("${ARR[@]}"); fi
               FF_CMD+=("-i" "$IMG")
               eval "I${i}_IDX=$CUR_IDX"
@@ -226,8 +212,8 @@ jobs:
           [ -n "$A_TARGET" ] && FF_CMD+=("-map" "$A_TARGET")
 
           # ENCODER & OUTPUT
-          FF_CMD+=("-c:v" "libx264" "-preset" "$E_PRE" "-b:v" "$E_BIT" "-maxrate" "$E_BIT" "-bufsize" "$(( ${E_BIT%k} * 2 ))k" "-g" "60")
-          FF_CMD+=("-c:a" "aac" "-b:a" "128k" "-ar" "44100" "-f" "flv" "-flvflags" "no_duration_filesize" "$RTMP/$KEY")
+          if [ -n "$OUT_CMD" ]; then read -r -a ARR <<< "$OUT_CMD"; FF_CMD+=("${ARR[@]}"); fi
+          FF_CMD+=("-f" "flv" "-flvflags" "no_duration_filesize" "$RTMP/$KEY")
 
           echo "▶️ MENJALANKAN FFMPEG..."
           ffmpeg "${FF_CMD[@]}"
