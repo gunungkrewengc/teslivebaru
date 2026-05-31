@@ -1,219 +1,69 @@
-name: 👑 FFMPEG 8 ULTIMATE FREESTYLE DASHBOARD
+name: FFmpeg Custom Inputs
 
 on:
   workflow_dispatch:
     inputs:
-      # ==========================================================
-      # 🎥 KELOMPOK VIDEO
-      # ==========================================================
-      v1_url:
-        description: '🔗 [VIDEO 1] Link Utama (Wajib)'
-        required: true
-      v1_cmd:
-        description: '⚙️ [VIDEO 1] Flag Input (Hapus jika tidak pakai)'
+      video:
+        description: 'Input Video (URL atau nama file)'
         required: false
-        default: '-re -stream_loop -1'
-        
-      v2_url:
-        description: '🔗 [VIDEO 2] Link PIP Overlay (Opsional)'
+        default: 'input.mp4'
+      video_cmd:
+        description: 'Command Video (misal: -c:v libx264 -preset veryfast)'
         required: false
-      v2_cmd:
-        description: '⚙️ [VIDEO 2] Flag Input'
+        default: '-c:v copy'
+      audio:
+        description: 'Input Audio (URL atau nama file)'
         required: false
-        default: '-stream_loop -1'
-
-      # ==========================================================
-      # 🎵 KELOMPOK AUDIO
-      # ==========================================================
-      a1_url:
-        description: '🔗 [AUDIO 1] Link Musik Utama (Opsional)'
+        default: ''
+      image:
+        description: 'Input Gambar (Watermark / Overlay)'
         required: false
-      a1_cmd:
-        description: '⚙️ [AUDIO 1] Flag Input'
+        default: ''
+      text:
+        description: 'Input Teks'
         required: false
-        default: '-stream_loop -1'
-
-      a2_url:
-        description: '🔗 [AUDIO 2] Link Backsound (Opsional)'
+        default: ''
+      rtmp_link:
+        description: 'Link RTMP (misal: rtmp://a.rtmp.youtube.com/live2)'
         required: false
-      a2_cmd:
-        description: '⚙️ [AUDIO 2] Flag Input'
-        required: false
-        default: '-stream_loop -1'
-
-      # ==========================================================
-      # 🖼️ KELOMPOK GAMBAR/GIF
-      # ==========================================================
-      i1_url:
-        description: '🔗 [GAMBAR 1] Link Logo / GIF Kanan Atas (Opsional)'
-        required: false
-      i1_cmd:
-        description: '⚙️ [GAMBAR 1] Flag Input (-ignore_loop 0 utk GIF, -loop 1 utk JPG)'
-        required: false
-        default: '-loop 1'
-
-      i2_url:
-        description: '🔗 [GAMBAR 2] Link Logo / GIF Kiri Bawah (Opsional)'
-        required: false
-      i2_cmd:
-        description: '⚙️ [GAMBAR 2] Flag Input'
-        required: false
-        default: '-loop 1'
-
-      # ==========================================================
-      # 📝 KELOMPOK TEKS
-      # ==========================================================
-      t_stat:
-        description: '📝 [TEKS] Watermark Diam (Opsional)'
-        required: false
-      t_run:
-        description: '🏃 [TEKS] Running Text Berjalan (Opsional)'
-        required: false
-      t_color:
-        description: '🎨 [TEKS] Warna Tulisan (white, yellow, red, cyan)'
-        required: false
-        default: 'white'
-
-      # ==========================================================
-      # 🚀 KELOMPOK ENCODER & SERVER
-      # ==========================================================
-      out_cmd:
-        description: '⚡ [ENCODER] Parameter Video & Audio Output'
-        required: false
-        default: '-c:v libx264 -preset veryfast -b:v 2500k -maxrate 2500k -bufsize 5000k -g 60 -c:a aac -b:a 128k -ar 44100'
-      rtmp_url:
-        description: '🚀 [SERVER] RTMP URL'
-        required: true
-        default: 'rtmp://a.rtmp.youtube.com/live2'
+        default: 'rtmp://'
       stream_key:
-        description: '🔑 [SERVER] Stream Key (Wajib)'
-        required: true
+        description: 'Stream Key'
+        required: false
+        default: ''
 
 jobs:
-  live-streaming:
+  ffmpeg:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Instalasi FFmpeg 8 & FreeFont
+      - uses: actions/checkout@v4
+      - name: Set up FFmpeg 8
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
-          sudo apt update -qq > /dev/null
-          sudo apt install -t "o=LP-PPA-ubuntuhandbook1-ffmpeg8" ffmpeg fonts-freefont-ttf -y -qq > /dev/null || sudo apt install ffmpeg fonts-freefont-ttf -y -qq > /dev/null
-
-      - name: Eksekusi FFmpeg Smart Backend
-        env:
-          V1: ${{ github.event.inputs.v1_url }}
-          V1_CMD: ${{ github.event.inputs.v1_cmd }}
-          V2: ${{ github.event.inputs.v2_url }}
-          V2_CMD: ${{ github.event.inputs.v2_cmd }}
-          A1: ${{ github.event.inputs.a1_url }}
-          A1_CMD: ${{ github.event.inputs.a1_cmd }}
-          A2: ${{ github.event.inputs.a2_url }}
-          A2_CMD: ${{ github.event.inputs.a2_cmd }}
-          I1: ${{ github.event.inputs.i1_url }}
-          I1_CMD: ${{ github.event.inputs.i1_cmd }}
-          I2: ${{ github.event.inputs.i2_url }}
-          I2_CMD: ${{ github.event.inputs.i2_cmd }}
-          T_STAT: ${{ github.event.inputs.t_stat }}
-          T_RUN: ${{ github.event.inputs.t_run }}
-          T_COL: ${{ github.event.inputs.t_color }}
-          OUT_CMD: ${{ github.event.inputs.out_cmd }}
-          RTMP: ${{ github.event.inputs.rtmp_url }}
-          KEY: ${{ github.event.inputs.stream_key }}
+          sudo apt update -y -qq > /dev/null
+          sudo apt install ffmpeg -y -qq > /dev/null
+      - name: Run FFmpeg
         run: |
-          echo "=========================================================="
-          echo "🚨 ANALISIS PARAMETER INPUT"
-          echo "=========================================================="
-          if [[ "$V1_CMD" == *"-re"* ]] && [[ "$V2_CMD" == *"-re"* ]]; then
-            echo "⚠️ PERINGATAN: Flag '-re' ganda terdeteksi! Dihapus dari PIP untuk cegah error."
-            V2_CMD="${V2_CMD//-re/}"
-          fi
-
-          declare -a FF_CMD=("-y" "-hide_banner")
-          CUR_IDX=0
-
-          echo "=========================================================="
-          echo "🛠️ PARSING MATRIX INPUT"
-          echo "=========================================================="
+          # Membaca semua inputan kolom ke dalam variabel Bash
+          VIDEO="${{ github.event.inputs.video }}"
+          VIDEO_CMD="${{ github.event.inputs.video_cmd }}"
+          AUDIO="${{ github.event.inputs.audio }}"
+          IMAGE="${{ github.event.inputs.image }}"
+          TEXT="${{ github.event.inputs.text }}"
+          RTMP="${{ github.event.inputs.rtmp_link }}"
+          KEY="${{ github.event.inputs.stream_key }}"
           
-          # PARSING VIDEO
-          if [ -n "$V1" ]; then
-            if [ -n "$V1_CMD" ]; then read -r -a ARR <<< "$V1_CMD"; FF_CMD+=("${ARR[@]}"); fi
-            FF_CMD+=("-i" "$V1"); V1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
-          fi
-          
-          if [ -n "$V2" ]; then
-            if [ -n "$V2_CMD" ]; then read -r -a ARR <<< "$V2_CMD"; FF_CMD+=("${ARR[@]}"); fi
-            FF_CMD+=("-i" "$V2"); V2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1))
-          fi
-
-          # PARSING AUDIO
-          A_COUNT=0
-          if [ -n "$A1" ]; then
-            if [ -n "$A1_CMD" ]; then read -r -a ARR <<< "$A1_CMD"; FF_CMD+=("${ARR[@]}"); fi
-            FF_CMD+=("-i" "$A1"); A1_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1))
-          fi
-          if [ -n "$A2" ]; then
-            if [ -n "$A2_CMD" ]; then read -r -a ARR <<< "$A2_CMD"; FF_CMD+=("${ARR[@]}"); fi
-            FF_CMD+=("-i" "$A2"); A2_IDX=$CUR_IDX; CUR_IDX=$((CUR_IDX+1)); A_COUNT=$((A_COUNT+1))
-          fi
-
-          # PARSING GAMBAR
-          for i in 1 2; do
-            IMG_VAR="I${i}"; CMD_VAR="I${i}_CMD"
-            IMG="${!IMG_VAR}"; CMD="${!CMD_VAR}"
+          while true; do
+            # ---------------------------------------------------------
+            # Susun perintah FFmpeg kamu di bawah ini. 
+            # Ini adalah contoh susunan dasar membaca Video + Command + RTMP/Key
+            # ---------------------------------------------------------
             
-            if [ -n "$IMG" ]; then
-              if [ -n "$CMD" ]; then read -r -a ARR <<< "$CMD"; FF_CMD+=("${ARR[@]}"); fi
-              FF_CMD+=("-i" "$IMG")
-              eval "I${i}_IDX=$CUR_IDX"
-              CUR_IDX=$((CUR_IDX+1))
+            ffmpeg -i "$VIDEO" $VIDEO_CMD -f flv "$RTMP/$KEY"
+            
+            if [ $? -ne 0 ]; then
+              echo "FFmpeg stopped with error code $?. Restarting in 5 seconds..."
+              sleep 5
             fi
           done
-
-          echo "=========================================================="
-          echo "⚙️ MEMBANGUN KANVAS FILTER VISUAL"
-          echo "=========================================================="
-          FC="[$V1_IDX:v]scale=1280:720,fps=30,setsar=1[v_base];"
-          ANCHOR="[v_base]"
-
-          if [ -n "$V2_IDX" ]; then FC="${FC}[$V2_IDX:v]scale=320:-1[v2_s];${ANCHOR}[v2_s]overlay=20:20:shortest=1[v_v2];"; ANCHOR="[v_v2]"; fi
-          if [ -n "$I1_IDX" ]; then FC="${FC}[$I1_IDX:v]scale=150:-1[i1_s];${ANCHOR}[i1_s]overlay=W-w-20:20:shortest=1[v_i1];"; ANCHOR="[v_i1]"; fi
-          if [ -n "$I2_IDX" ]; then FC="${FC}[$I2_IDX:v]scale=150:-1[i2_s];${ANCHOR}[i2_s]overlay=20:H-h-20:shortest=1[v_i2];"; ANCHOR="[v_i2]"; fi
-
-          FONT="/usr/share/fonts/truetype/freefont/FreeSans.ttf"
-          if [ -n "$T_STAT" ]; then
-            FC="${FC}${ANCHOR}drawtext=fontfile=${FONT}:text='${T_STAT}':x=(W-tw)/2:y=H-th-40:fontsize=28:fontcolor=${T_COL}:box=1:boxcolor=black@0.5[v_ts];"
-            ANCHOR="[v_ts]"
-          fi
-          if [ -n "$T_RUN" ]; then
-            FC="${FC}${ANCHOR}drawtext=fontfile=${FONT}:text='${T_RUN}':x=W-mod(t*120\,W+tw):y=H-th-10:fontsize=24:fontcolor=${T_COL}:box=1:boxcolor=black@0.6[v_tr];"
-            ANCHOR="[v_tr]"
-          fi
-          FC="${FC}${ANCHOR}format=yuv420p[v_out]"
-
-          # ROUTING AUDIO MIXER
-          if [ "$A_COUNT" -gt 0 ]; then
-            A_STR=""
-            [ -n "$A1_IDX" ] && A_STR="$A_STR [$A1_IDX:a]"
-            [ -n "$A2_IDX" ] && A_STR="$A_STR [$A2_IDX:a]"
-            
-            if [ "$A_COUNT" -eq 1 ]; then
-              A_TARGET="${A_STR#" "}"
-            else
-              FC="${FC}; $A_STR amix=inputs=${A_COUNT}:duration=longest[a_out]"
-              A_TARGET="[a_out]"
-            fi
-          else
-            A_TARGET="[$V1_IDX:a]?"
-          fi
-
-          FF_CMD+=("-filter_complex" "$FC" "-map" "[v_out]")
-          [ -n "$A_TARGET" ] && FF_CMD+=("-map" "$A_TARGET")
-
-          # ENCODER & OUTPUT
-          if [ -n "$OUT_CMD" ]; then read -r -a ARR <<< "$OUT_CMD"; FF_CMD+=("${ARR[@]}"); fi
-          FF_CMD+=("-f" "flv" "-flvflags" "no_duration_filesize" "$RTMP/$KEY")
-
-          echo "▶️ MENJALANKAN FFMPEG..."
-          ffmpeg "${FF_CMD[@]}"
