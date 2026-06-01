@@ -243,7 +243,6 @@ jobs:
           KEY: ${{ github.event.inputs.stream_key }}
         run: |
           while true; do
-            # Variabel untuk menampung command final sebelum dieksekusi
             FINAL_CMD=""
 
             # ---------------------------------------------------------
@@ -254,7 +253,7 @@ jobs:
               FINAL_CMD="$MANUAL_CMD"
             else
               # ---------------------------------------------------------
-              # MODE DROPDOWN OTOMATIS (JIKA KOLOM MANUAL KOSONG)
+              # MODE DROPDOWN OTOMATIS
               # ---------------------------------------------------------
               echo "Menyusun komponen perintah otomatis dari dropdown..."
               CMD="ffmpeg"
@@ -266,8 +265,10 @@ jobs:
               fi
               CMD="$CMD -i \"$VIDEO\""
               
+              # FIX 3: Tambahkan loop untuk audio latar agar tidak berhenti di tengah siaran
               if [[ -n "$AUDIO" ]]; then
                 AUDIO_PRESENT=1
+                if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
                 if [[ "$AUDIO" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
                 CMD="$CMD -i \"$AUDIO\""
               fi
@@ -304,7 +305,9 @@ jobs:
                 V_MAP="v_img"
               fi
               
+              # FIX 2: Mencegah error syntax karena teks kutip tunggal (contoh: Jum'at)
               if [[ -n "$TEXT" ]]; then
+                SAFE_TEXT="${TEXT//\'/\\\'}"
                 COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
                 SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
                 T_X="10"; T_Y="H-h-30"
@@ -312,7 +315,7 @@ jobs:
                 if [[ "$TXT_POS" == "Kiri Atas" ]]; then T_X="10"; T_Y="10"; fi
                 if [[ "$TXT_POS" == "Kanan Atas" ]]; then T_X="W-w-10"; T_Y="10"; fi
                 if [[ "$TXT_POS" == "Tengah Screen" ]]; then T_X="(W-w)/2"; T_Y="(H-h)/2"; fi
-                FILTER="${FILTER}[$V_MAP]drawtext=text='$TEXT':fontcolor=$COLOR:fontsize=$SIZE:x=$T_X:y=$T_Y[v_txt];"
+                FILTER="${FILTER}[$V_MAP]drawtext=text='$SAFE_TEXT':fontcolor=$COLOR:fontsize=$SIZE:x=$T_X:y=$T_Y[v_txt];"
                 V_MAP="v_txt"
               fi
               
@@ -336,9 +339,10 @@ jobs:
                 CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
               
+              # FIX 1: Memaksa video codec libx264 jika ada filter, mencegah crash codec copy
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
               if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
-                if [[ "$V_CODEC" == "default"* ]]; then V_CODEC="libx264"; fi
+                if [[ "$V_CODEC" == "default"* ]] || [[ "$V_CODEC" == "copy" ]]; then V_CODEC="libx264"; fi
                 CMD="$CMD -c:v $V_CODEC"
               else
                 if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
@@ -347,6 +351,7 @@ jobs:
               if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
               if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
               
+              # Celah Filter Volume Codec Audio 
               FORCE_A_ENCODE=0
               if [[ "$A_VOL_MAIN" != "default"* ]] || [[ "$A_VOL_EXT" != "default"* ]]; then FORCE_A_ENCODE=1; fi
 
@@ -364,24 +369,20 @@ jobs:
               
               CMD="$CMD -f flv \"$RTMP/$KEY\""
               
-              # Set hasil akhir ke variabel FINAL_CMD
               FINAL_CMD="$CMD"
             fi
 
             # ---------------------------------------------------------
-            # EKSEKUSI ANTI-BUG & ANTI-TABRAKAN
+            # EKSEKUSI ANTI-BUG (Mencegah salah baca kutip/karakter khusus)
             # ---------------------------------------------------------
-            # Daripada menggunakan 'eval' yang rentan salah baca karakter kutip/dollar/dll,
-            # kita simpan command persis seperti aslinya ke dalam file script lalu eksekusi.
             printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
             echo "================ MENJALANKAN PERINTAH ================"
-            # Print script ke log, tetapi sensor bagian link rtmp demi keamanan
+            # Menyembunyikan stream key dari log tanpa merusak file eksekusi
             sed 's|rtmp://[^" ]*|rtmp://[STREAM_KEY_DISENSOR]|g' run_stream.sh | grep -v "#!/bin/bash"
             echo "======================================================"
             
-            # Eksekusi script
             ./run_stream.sh
             
             if [ $? -ne 0 ]; then
