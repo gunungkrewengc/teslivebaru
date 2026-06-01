@@ -7,7 +7,7 @@ on:
       # 0. SAKELAR UTAMA: COMMAND MANUAL (BYPASS ALL)
       # =========================================================
       manual_cmd:
-        description: '⚠️ [COMMAND MANUAL] Isi lengkap jika ingin bypass semua kolom bawah. Kosongkan jika ingin pakai dropdown.'
+        description: '⚠️ [COMMAND MANUAL] Tempel hasil generate HTML di sini (Bypass semua setting bawah)'
         required: false
         default: ''
 
@@ -242,16 +242,16 @@ jobs:
           RTMP: ${{ github.event.inputs.rtmp_link }}
           KEY: ${{ github.event.inputs.stream_key }}
         run: |
-          # Menyembunyikan Stream Key dari log GitHub Actions
-          echo "::add-mask::$KEY"
-          
           while true; do
+            # Variabel untuk menampung command final sebelum dieksekusi
+            FINAL_CMD=""
+
             # ---------------------------------------------------------
             # SAKELAR OTOMATIS: JIKA KOLOM MANUAL DIISI
             # ---------------------------------------------------------
             if [[ -n "$MANUAL_CMD" ]]; then
-              echo "[SISTEM DIALIKHAN] Menjalankan murni command manual dari pengguna..."
-              CMD="$MANUAL_CMD"
+              echo "[SISTEM DIALIHKAN] Menggunakan murni command dari Generator HTML..."
+              FINAL_CMD="$MANUAL_CMD"
             else
               # ---------------------------------------------------------
               # MODE DROPDOWN OTOMATIS (JIKA KOLOM MANUAL KOSONG)
@@ -284,7 +284,6 @@ jobs:
               USE_A_FILTER=0
               FORCE_V_ENCODE_LAY=0
               
-              # Logika Video Layout
               if [[ "$V_LAYOUT" == *"Crop"* ]]; then
                 FILTER="${FILTER}[0:v]crop=ih*9/16:ih[v_lay];"
                 V_MAP="v_lay"; FORCE_V_ENCODE_LAY=1
@@ -293,7 +292,6 @@ jobs:
                 V_MAP="v_lay"; FORCE_V_ENCODE_LAY=1
               fi
               
-              # Logika Overlay Gambar
               if [[ "$IMAGE_PRESENT" -eq 1 ]]; then
                 IMG_IDX="1"; if [[ -n "$AUDIO" ]]; then IMG_IDX="2"; fi
                 SCALE_CMD=""
@@ -306,7 +304,6 @@ jobs:
                 V_MAP="v_img"
               fi
               
-              # Logika Text
               if [[ -n "$TEXT" ]]; then
                 COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
                 SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
@@ -319,7 +316,6 @@ jobs:
                 V_MAP="v_txt"
               fi
               
-              # Logika Mix Audio
               if [[ -n "$AUDIO" ]]; then
                 if [[ "$A_MIX" == "Gabungkan"* ]]; then
                   V_MAIN_FILT="volume=1.0"; if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$A_VOL_MAIN"; fi
@@ -331,7 +327,6 @@ jobs:
                 fi
               fi
               
-              # Penggabungan Filter Complex
               if [[ -n "$FILTER" ]]; then
                 FILTER=${FILTER%?}
                 CMD="$CMD -filter_complex \"$FILTER\""
@@ -341,7 +336,6 @@ jobs:
                 CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
               
-              # Parameter Codec Video
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
               if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
                 if [[ "$V_CODEC" == "default"* ]]; then V_CODEC="libx264"; fi
@@ -353,15 +347,12 @@ jobs:
               if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
               if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
               
-              # Parameter Codec Audio (PERBAIKAN LOGIKA)
               FORCE_A_ENCODE=0
               if [[ "$A_VOL_MAIN" != "default"* ]] || [[ "$A_VOL_EXT" != "default"* ]]; then FORCE_A_ENCODE=1; fi
 
               if [[ "$USE_A_FILTER" -eq 1 ]] || [[ "$FORCE_A_ENCODE" -eq 1 ]]; then
                 if [[ "$A_CODEC" == "default"* ]] || [[ "$A_CODEC" == "copy" ]]; then A_CODEC="aac"; fi
                 CMD="$CMD -c:a $A_CODEC"
-                
-                # Masukkan filter volume jika bukan mode mix (amix)
                 if [[ "$USE_A_FILTER" -eq 0 ]]; then
                    if [[ -n "$AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_EXT\""; fi
                    if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_MAIN\""; fi
@@ -369,22 +360,29 @@ jobs:
               else
                 if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
               fi
-              
               if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
               
-              # Tujuan Akhir RTMP
               CMD="$CMD -f flv \"$RTMP/$KEY\""
+              
+              # Set hasil akhir ke variabel FINAL_CMD
+              FINAL_CMD="$CMD"
             fi
 
             # ---------------------------------------------------------
-            # EKSEKUSI PERINTAH FINAL (MANUAL / AUTOMATIC) + PROTECTION
+            # EKSEKUSI ANTI-BUG & ANTI-TABRAKAN
             # ---------------------------------------------------------
-            # Buat versi command yang aman tanpa Stream Key untuk ditampilkan di log
-            SAFE_CMD="${CMD/$KEY/********}"
-            echo "Menjalankan perintah: $SAFE_CMD"
+            # Daripada menggunakan 'eval' yang rentan salah baca karakter kutip/dollar/dll,
+            # kita simpan command persis seperti aslinya ke dalam file script lalu eksekusi.
+            printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
+            chmod +x run_stream.sh
             
-            # Eksekusi command asli yang berisi Stream Key
-            eval $CMD
+            echo "================ MENJALANKAN PERINTAH ================"
+            # Print script ke log, tetapi sensor bagian link rtmp demi keamanan
+            sed 's|rtmp://[^" ]*|rtmp://[STREAM_KEY_DISENSOR]|g' run_stream.sh | grep -v "#!/bin/bash"
+            echo "======================================================"
+            
+            # Eksekusi script
+            ./run_stream.sh
             
             if [ $? -ne 0 ]; then
               echo "Proses berhenti/Error. Mengulang kembali dalam 5 detik..."
