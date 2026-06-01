@@ -209,11 +209,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up FFmpeg 8
+      - name: Set up FFmpeg 8 & Fonts
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
-          sudo apt install ffmpeg -y -qq > /dev/null
+          # MENAMBAHKAN PAKET FONT AGAR FITUR TEKS TIDAK CRASH
+          sudo apt install ffmpeg fonts-freefont-ttf -y -qq > /dev/null
           
       - name: Jalankan Core Engine FFmpeg
         env:
@@ -265,7 +266,7 @@ jobs:
               fi
               CMD="$CMD -i \"$VIDEO\""
               
-              # FIX 3: Tambahkan loop untuk audio latar agar tidak berhenti di tengah siaran
+              # FIX: Loop audio agar sejalan dengan durasi loop video
               if [[ -n "$AUDIO" ]]; then
                 AUDIO_PRESENT=1
                 if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
@@ -305,7 +306,7 @@ jobs:
                 V_MAP="v_img"
               fi
               
-              # FIX 2: Mencegah error syntax karena teks kutip tunggal (contoh: Jum'at)
+              # FIX: Escape kutipan tunggal (contoh: Jum'at)
               if [[ -n "$TEXT" ]]; then
                 SAFE_TEXT="${TEXT//\'/\\\'}"
                 COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
@@ -339,7 +340,7 @@ jobs:
                 CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
               
-              # FIX 1: Memaksa video codec libx264 jika ada filter, mencegah crash codec copy
+              # FIX: Paksa encode video libx264 jika filter aktif, cegah copy crash
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
               if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
                 if [[ "$V_CODEC" == "default"* ]] || [[ "$V_CODEC" == "copy" ]]; then V_CODEC="libx264"; fi
@@ -351,7 +352,7 @@ jobs:
               if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
               if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
               
-              # Celah Filter Volume Codec Audio 
+              # FIX: Paksa encode audio aac jika volume/mix diubah
               FORCE_A_ENCODE=0
               if [[ "$A_VOL_MAIN" != "default"* ]] || [[ "$A_VOL_EXT" != "default"* ]]; then FORCE_A_ENCODE=1; fi
 
@@ -373,16 +374,17 @@ jobs:
             fi
 
             # ---------------------------------------------------------
-            # EKSEKUSI ANTI-BUG (Mencegah salah baca kutip/karakter khusus)
+            # EKSEKUSI FILE .SH DINAMIS (Anti tabrakan syntax bash)
             # ---------------------------------------------------------
             printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
             echo "================ MENJALANKAN PERINTAH ================"
-            # Menyembunyikan stream key dari log tanpa merusak file eksekusi
+            # Menyembunyikan Stream Key di log eksekusi demi keamanan
             sed 's|rtmp://[^" ]*|rtmp://[STREAM_KEY_DISENSOR]|g' run_stream.sh | grep -v "#!/bin/bash"
             echo "======================================================"
             
+            # Eksekusi server streaming
             ./run_stream.sh
             
             if [ $? -ne 0 ]; then
