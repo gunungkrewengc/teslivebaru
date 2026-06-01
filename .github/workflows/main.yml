@@ -213,7 +213,7 @@ jobs:
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
-          # MENAMBAHKAN PAKET FONT AGAR FITUR TEKS TIDAK CRASH
+          # FIX: Tambahkan instalasi font agar fitur Teks/Jam/Bot tidak crash
           sudo apt install ffmpeg fonts-freefont-ttf -y -qq > /dev/null
           
       - name: Jalankan Core Engine FFmpeg
@@ -243,6 +243,18 @@ jobs:
           RTMP: ${{ github.event.inputs.rtmp_link }}
           KEY: ${{ github.event.inputs.stream_key }}
         run: |
+          # ---------------------------------------------------------
+          # FIX: BACKGROUND WORKER UNTUK FITUR BOT REAL-TIME
+          # ---------------------------------------------------------
+          # Worker ini akan menarik perubahan file (seperti alert.txt) dari repositori GitHub
+          # setiap 10 detik agar FFmpeg bisa membaca teks baru tanpa harus mematikan live.
+          (
+            while true; do
+              git pull --rebase > /dev/null 2>&1
+              sleep 10
+            done
+          ) &
+          
           while true; do
             FINAL_CMD=""
 
@@ -266,7 +278,6 @@ jobs:
               fi
               CMD="$CMD -i \"$VIDEO\""
               
-              # FIX: Loop audio agar sejalan dengan durasi loop video
               if [[ -n "$AUDIO" ]]; then
                 AUDIO_PRESENT=1
                 if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
@@ -306,9 +317,12 @@ jobs:
                 V_MAP="v_img"
               fi
               
-              # FIX: Escape kutipan tunggal (contoh: Jum'at)
               if [[ -n "$TEXT" ]]; then
+                # FIX: Perlindungan escape karakter khusus di mode Dropdown
                 SAFE_TEXT="${TEXT//\'/\\\'}"
+                SAFE_TEXT="${SAFE_TEXT//\%/\\%}"
+                SAFE_TEXT="${SAFE_TEXT//\,/\\,}"
+                
                 COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
                 SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
                 T_X="10"; T_Y="H-h-30"
@@ -340,7 +354,6 @@ jobs:
                 CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
               
-              # FIX: Paksa encode video libx264 jika filter aktif, cegah copy crash
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
               if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
                 if [[ "$V_CODEC" == "default"* ]] || [[ "$V_CODEC" == "copy" ]]; then V_CODEC="libx264"; fi
@@ -352,7 +365,6 @@ jobs:
               if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
               if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
               
-              # FIX: Paksa encode audio aac jika volume/mix diubah
               FORCE_A_ENCODE=0
               if [[ "$A_VOL_MAIN" != "default"* ]] || [[ "$A_VOL_EXT" != "default"* ]]; then FORCE_A_ENCODE=1; fi
 
@@ -374,17 +386,15 @@ jobs:
             fi
 
             # ---------------------------------------------------------
-            # EKSEKUSI FILE .SH DINAMIS (Anti tabrakan syntax bash)
+            # FIX: EKSEKUSI .SH DINAMIS UNTUK KEAMANAN KARAKTER BASH
             # ---------------------------------------------------------
             printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
             echo "================ MENJALANKAN PERINTAH ================"
-            # Menyembunyikan Stream Key di log eksekusi demi keamanan
             sed 's|rtmp://[^" ]*|rtmp://[STREAM_KEY_DISENSOR]|g' run_stream.sh | grep -v "#!/bin/bash"
             echo "======================================================"
             
-            # Eksekusi server streaming
             ./run_stream.sh
             
             if [ $? -ne 0 ]; then
