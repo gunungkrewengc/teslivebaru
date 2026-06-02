@@ -227,13 +227,13 @@ jobs:
           (
             while true; do
               git pull --rebase > /dev/null 2>&1
+              # FIX: Sleep diperlama agar tidak kena limit rate github
               sleep 60
             done
           ) &
           
           while true; do
-            # PERBAIKAN FATAL: stream_text.txt di-generate selalu di paling awal loop agar aman
-            # di semua mode (Manual bypass maupun Dropdown otomatis)
+            # FIX: File txt ini ditaruh di awal untuk jaga-jaga kalau mode Manual dijalankan
             if [[ -n "$TEXT" ]]; then
               printf "%s\n" "$TEXT" > stream_text.txt
             else
@@ -242,8 +242,7 @@ jobs:
 
             FINAL_CMD=""
 
-            # FIX FINAL: Menggunakan Bash Regex agar tanda kutip TIDAK terhapus,
-            # Namun tetap aman kalau user cuma mengetik spasi kosong.
+            # FIX: Tetap menggunakan Bash Regex agar aman
             if [[ "$MANUAL_CMD" =~ [^[:space:]] ]]; then
               echo "======================================================"
               echo "⚠️ [MODE MANUAL AKTIF] Mengabaikan setting Dropdown!"
@@ -272,13 +271,15 @@ jobs:
               
               if [[ -n "$IMAGE" ]]; then
                 IMAGE_PRESENT=1
-                if [[ "$IMAGE" == *".png" || "$IMAGE" == *".jpg" || "$IMAGE" == *".jpeg" || "$IMAGE" == *".webp" ]]; then
+                # FIX: Ubah ke lowercase agar .JPG dan .PNG (huruf besar) tetap lolos deteksi loop
+                IMAGE_LOWER=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+                if [[ "$IMAGE_LOWER" == *".png" || "$IMAGE_LOWER" == *".jpg" || "$IMAGE_LOWER" == *".jpeg" || "$IMAGE_LOWER" == *".webp" ]]; then
                   CMD="$CMD -loop 1"
                 fi
-                if [[ "$IMAGE" == *".gif" ]]; then
+                if [[ "$IMAGE_LOWER" == *".gif" ]]; then
                   CMD="$CMD -ignore_loop 0"
                 fi
-                if [[ "$IMAGE" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
+                if [[ "$IMAGE_LOWER" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
                 CMD="$CMD -i "$IMAGE""
               fi
               
@@ -410,7 +411,7 @@ jobs:
                  if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$AUDIO"; fi
                  
                  ORIG_A_CODEC=$(timeout 15s ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$TARGET_AUDIO_FILE" 2>/dev/null | head -n 1)
-                 # PERBAIKAN: Dihilangkan && -n "$ORIG_A_CODEC" agar ketika ffprobe lambat / timeout, stream tetap dipaksa fallback ke aac untuk asuransi keamanan
+                 # FIX: Dihapusnya && -n "$ORIG_A_CODEC" membuat fallback akan selalu jalan apabila probing timeout/gagal
                  if [[ "$ORIG_A_CODEC" != "aac" && "$ORIG_A_CODEC" != "mp3" ]]; then
                     echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV/RTMP atau gagal dibaca. Memaksa downgrade ke aac."
                     FINAL_A_CODEC="aac"
