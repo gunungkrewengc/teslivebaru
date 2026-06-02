@@ -400,11 +400,15 @@ jobs:
               FINAL_CMD="$CMD"
             fi
 
+            # ---------------------------------------------------------
+            # EKSEKUSI .SH DINAMIS UNTUK KEAMANAN KARAKTER BASH
+            # ---------------------------------------------------------
             printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
             echo "================ MENJALANKAN PERINTAH ================"
-            sed 's|rtmp://[^" ]*|rtmp://[STREAM_KEY_DISENSOR]|g' run_stream.sh | grep -v "#!/bin/bash"
+            # FIX: Melindungi baik rtmp:// maupun rtmps:// agar Stream Key tidak bocor di Log
+            sed 's|rtmp.*://[^" ]*|rtmp(s)://[STREAM_KEY_DISENSOR]|g' run_stream.sh | grep -v "#!/bin/bash"
             echo "======================================================"
             
             ./run_stream.sh
