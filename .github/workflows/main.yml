@@ -255,16 +255,10 @@ jobs:
           while true; do
             FINAL_CMD=""
 
-            # ---------------------------------------------------------
-            # SAKELAR OTOMATIS: JIKA KOLOM MANUAL DIISI
-            # ---------------------------------------------------------
             if [[ -n "$MANUAL_CMD" ]]; then
               echo "[SISTEM DIALIHKAN] Menggunakan murni command dari Generator HTML..."
               FINAL_CMD="$MANUAL_CMD"
             else
-              # ---------------------------------------------------------
-              # MODE DROPDOWN OTOMATIS
-              # ---------------------------------------------------------
               echo "Menyusun komponen perintah otomatis dari dropdown..."
               CMD="ffmpeg"
               
@@ -287,6 +281,9 @@ jobs:
                 if [[ "$IMAGE" == *".png" || "$IMAGE" == *".jpg" || "$IMAGE" == *".jpeg" || "$IMAGE" == *".webp" ]]; then
                   CMD="$CMD -loop 1"
                 fi
+                if [[ "$IMAGE" == *".gif" ]]; then
+                  CMD="$CMD -ignore_loop 0"
+                fi
                 if [[ "$IMAGE" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
                 CMD="$CMD -i \"$IMAGE\""
               fi
@@ -297,7 +294,6 @@ jobs:
               USE_A_FILTER=0
               FORCE_V_ENCODE_LAY=0
               
-              # FIX: Matematika pembulatan Genap (trunc(X/2)*2)
               if [[ "$V_LAYOUT" == *"Crop"* ]]; then
                 FILTER="${FILTER}[0:v]crop='trunc(min(iw,ih*9/16)/2)*2':'trunc(ih/2)*2'[v_lay];"
                 V_MAP="v_lay"; FORCE_V_ENCODE_LAY=1
@@ -309,7 +305,10 @@ jobs:
               if [[ "$IMAGE_PRESENT" -eq 1 ]]; then
                 IMG_IDX="1"; if [[ -n "$AUDIO" ]]; then IMG_IDX="2"; fi
                 SCALE_CMD=""
-                if [[ "$IMG_SCALE" != "default"* ]]; then SCALE_CMD="scale=$IMG_SCALE,"; fi
+                if [[ "$IMG_SCALE" != "default"* ]]; then 
+                  CLEAN_SCALE=$(echo "$IMG_SCALE" | awk '{print $1}')
+                  SCALE_CMD="scale=$CLEAN_SCALE,"
+                fi
                 POS="W-w-10:10"
                 if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
                 if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
@@ -336,16 +335,19 @@ jobs:
                 V_MAP="v_txt"
               fi
               
+              CLEAN_VOL_MAIN=$(echo "$A_VOL_MAIN" | awk '{print $1}')
+              CLEAN_VOL_EXT=$(echo "$A_VOL_EXT" | awk '{print $1}')
+
               if [[ -n "$AUDIO" ]]; then
                 if [[ "$A_MIX" == "Gabungkan"* ]]; then
-                  # FIX: ffprobe mengecek keberadaan track audio
-                  HAS_AUDIO=$(ffprobe -v error -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                  HAS_AUDIO=$(ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                  
                   if [[ "$HAS_AUDIO" != "audio" ]]; then
                     echo "⚠️ Peringatan: Video asli bisu. Membatalkan 'amix' agar FFmpeg tidak crash, menggunakan audio lagu saja."
                     A_MAP="1:a"
                   else
-                    V_MAIN_FILT="volume=1.0"; if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$A_VOL_MAIN"; fi
-                    V_EXT_FILT="volume=1.0";  if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$A_VOL_EXT"; fi
+                    V_MAIN_FILT="volume=1.0"; if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$CLEAN_VOL_MAIN"; fi
+                    V_EXT_FILT="volume=1.0";  if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$CLEAN_VOL_EXT"; fi
                     FILTER="${FILTER}[0:a]${V_MAIN_FILT}[a_m];[1:a]${V_EXT_FILT}[a_e];[a_m][a_e]amix=inputs=2:duration=first[a_mix];"
                     A_MAP="a_mix"; USE_A_FILTER=1
                   fi
@@ -354,7 +356,6 @@ jobs:
                 fi
               fi
               
-              # FIX: Standardisasi format Pixel
               if [[ -n "$FILTER" ]]; then
                 if [[ "$V_MAP" != "0:v" ]]; then
                   FILTER="${FILTER}[$V_MAP]format=yuv420p[v_final];"
@@ -386,8 +387,8 @@ jobs:
                 if [[ "$A_CODEC" == "default"* ]] || [[ "$A_CODEC" == "copy" ]]; then A_CODEC="aac"; fi
                 CMD="$CMD -c:a $A_CODEC"
                 if [[ "$USE_A_FILTER" -eq 0 ]]; then
-                   if [[ -n "$AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_EXT\""; fi
-                   if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then CMD="$CMD -af \"volume=$A_VOL_MAIN\""; fi
+                   if [[ -n "$AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_EXT\""; fi
+                   if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_MAIN\""; fi
                 fi
               else
                 if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
@@ -399,9 +400,6 @@ jobs:
               FINAL_CMD="$CMD"
             fi
 
-            # ---------------------------------------------------------
-            # EKSEKUSI .SH DINAMIS UNTUK KEAMANAN KARAKTER BASH
-            # ---------------------------------------------------------
             printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
