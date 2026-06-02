@@ -192,11 +192,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up FFmpeg 8 & Fonts
+      - name: Set up FFmpeg 8, Fonts & yt-dlp
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
           sudo apt install ffmpeg fonts-freefont-ttf -y -qq > /dev/null
+          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+          sudo chmod a+rx /usr/local/bin/yt-dlp
           
       - name: Jalankan Core Engine FFmpeg
         env:
@@ -225,13 +227,6 @@ jobs:
           RTMP: ${{ github.event.inputs.rtmp_link }}
           KEY: ${{ github.event.inputs.stream_key }}
         run: |
-          (
-            while true; do
-              git pull --rebase > /dev/null 2>&1
-              sleep 60
-            done
-          ) &
-          
           if [[ -n "$TEXT" ]]; then
             printf "%s\n" "$TEXT" > stream_text.txt
           else
@@ -272,7 +267,6 @@ jobs:
                 IMAGE_PRESENT=1
                 IMAGE_LOWER=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
                 
-                # BUG 2 FIXED: Paksa loop statis kecuali spesifik file gif
                 if [[ "$IMAGE_LOWER" == *".gif" ]]; then
                   CMD="$CMD -ignore_loop 0"
                 else
