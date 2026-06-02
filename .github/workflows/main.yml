@@ -1,9 +1,6 @@
-        run: |
           # ---------------------------------------------------------
           # BACKGROUND WORKER UNTUK FITUR BOT REAL-TIME
           # ---------------------------------------------------------
-          # Worker ini akan menarik perubahan file (seperti alert.txt) dari repositori GitHub
-          # setiap 10 detik agar FFmpeg bisa membaca teks baru tanpa harus mematikan live.
           (
             while true; do
               git pull --rebase > /dev/null 2>&1
@@ -14,16 +11,10 @@
           while true; do
             FINAL_CMD=""
 
-            # ---------------------------------------------------------
-            # SAKELAR OTOMATIS: JIKA KOLOM MANUAL DIISI
-            # ---------------------------------------------------------
             if [[ -n "$MANUAL_CMD" ]]; then
               echo "[SISTEM DIALIHKAN] Menggunakan murni command dari Generator HTML..."
               FINAL_CMD="$MANUAL_CMD"
             else
-              # ---------------------------------------------------------
-              # MODE DROPDOWN OTOMATIS
-              # ---------------------------------------------------------
               echo "Menyusun komponen perintah otomatis dari dropdown..."
               CMD="ffmpeg"
               
@@ -43,7 +34,6 @@
               
               if [[ -n "$IMAGE" ]]; then
                 IMAGE_PRESENT=1
-                # FIX: Menyuntikkan flag -loop 1 untuk file gambar statis agar tidak terputus (EOF)
                 if [[ "$IMAGE" == *".png" || "$IMAGE" == *".jpg" || "$IMAGE" == *".jpeg" || "$IMAGE" == *".webp" ]]; then
                   CMD="$CMD -loop 1"
                 fi
@@ -57,12 +47,12 @@
               USE_A_FILTER=0
               FORCE_V_ENCODE_LAY=0
               
-              # FIX: Rumus min() untuk crop rasio yang aman (menghindari error "invalid dimensions")
+              # FIX 1: Matematika pembulatan Genap (trunc(X/2)*2) untuk mencegah Crash Dimensi Desimal
               if [[ "$V_LAYOUT" == *"Crop"* ]]; then
-                FILTER="${FILTER}[0:v]crop='min(iw,ih*9/16)':ih[v_lay];"
+                FILTER="${FILTER}[0:v]crop='trunc(min(iw,ih*9/16)/2)*2':'trunc(ih/2)*2'[v_lay];"
                 V_MAP="v_lay"; FORCE_V_ENCODE_LAY=1
               elif [[ "$V_LAYOUT" == *"Kotak Hitam"* ]]; then
-                FILTER="${FILTER}[0:v]pad=iw:iw*16/9:0:(oh-ih)/2:black[v_lay];"
+                FILTER="${FILTER}[0:v]pad='trunc(iw/2)*2':'trunc((iw*16/9)/2)*2':0:'trunc((oh-ih)/4)*2':black[v_lay];"
                 V_MAP="v_lay"; FORCE_V_ENCODE_LAY=1
               fi
               
@@ -74,14 +64,13 @@
                 if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
                 if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
                 if [[ "$IMG_POS" == "Kiri Bawah" ]]; then POS="10:H-h-10"; fi
-                # FIX: shortest=1 disematkan agar panjang overlay menyesuaikan panjang video (bukan gambar)
                 FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS:shortest=1[v_img];"
                 V_MAP="v_img"
               fi
               
               if [[ -n "$TEXT" ]]; then
-                # FIX: Proteksi dan escape karakter spesial untuk teks (titik dua, koma, dsb.)
-                SAFE_TEXT="${TEXT//\'/\\\'}"
+                # FIX: Perlindungan kutip tunggal standar FFmpeg ('\'') agar tidak merusak bash
+                SAFE_TEXT="${TEXT//\'/\'\\\'\'}"
                 SAFE_TEXT="${SAFE_TEXT//\%/\\%}"
                 SAFE_TEXT="${SAFE_TEXT//\,/\\,}"
                 SAFE_TEXT="${SAFE_TEXT//\:/\\\\:}"
@@ -93,7 +82,6 @@
                 if [[ "$TXT_POS" == "Kiri Atas" ]]; then T_X="10"; T_Y="10"; fi
                 if [[ "$TXT_POS" == "Kanan Atas" ]]; then T_X="W-w-10"; T_Y="10"; fi
                 if [[ "$TXT_POS" == "Tengah Screen" ]]; then T_X="(W-w)/2"; T_Y="(H-h)/2"; fi
-                # FIX: Jalur font (fontfile) ditulis absolut untuk GitHub Actions Ubuntu
                 FONT_PATH="/usr/share/fonts/truetype/freefont/FreeSans.ttf"
                 FILTER="${FILTER}[$V_MAP]drawtext=fontfile=${FONT_PATH}:text='$SAFE_TEXT':fontcolor=$COLOR:fontsize=$SIZE:x=$T_X:y=$T_Y[v_txt];"
                 V_MAP="v_txt"
@@ -101,20 +89,31 @@
               
               if [[ -n "$AUDIO" ]]; then
                 if [[ "$A_MIX" == "Gabungkan"* ]]; then
-                  V_MAIN_FILT="volume=1.0"; if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$A_VOL_MAIN"; fi
-                  V_EXT_FILT="volume=1.0";  if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$A_VOL_EXT"; fi
-                  # FIX: Menggunakan flag `?` pada `0:a?` agar tidak langsung mati (fatal error) jika video asli bisu
-                  FILTER="${FILTER}[0:a?]${V_MAIN_FILT}[a_m];[1:a]${V_EXT_FILT}[a_e];[a_m][a_e]amix=inputs=2:duration=first[a_mix];"
-                  A_MAP="a_mix"; USE_A_FILTER=1
+                  # FIX 3: ffprobe mengecek keberadaan track audio sebelum melakukan amix
+                  HAS_AUDIO=$(ffprobe -v error -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" | head -n 1)
+                  if [[ "$HAS_AUDIO" != "audio" ]]; then
+                    echo "⚠️ Peringatan: Video asli bisu. Membatalkan 'amix' agar FFmpeg tidak crash, menggunakan audio lagu saja."
+                    A_MAP="1:a"
+                  else
+                    V_MAIN_FILT="volume=1.0"; if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$A_VOL_MAIN"; fi
+                    V_EXT_FILT="volume=1.0";  if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$A_VOL_EXT"; fi
+                    FILTER="${FILTER}[0:a]${V_MAIN_FILT}[a_m];[1:a]${V_EXT_FILT}[a_e];[a_m][a_e]amix=inputs=2:duration=first[a_mix];"
+                    A_MAP="a_mix"; USE_A_FILTER=1
+                  fi
                 else
                   A_MAP="1:a"
                 fi
               fi
               
+              # FIX 2: Standardisasi format Pixel (Color Space) ke yuv420p di akhir node filter
               if [[ -n "$FILTER" ]]; then
+                if [[ "$V_MAP" != "0:v" ]]; then
+                  FILTER="${FILTER}[$V_MAP]format=yuv420p[v_final];"
+                  V_MAP="v_final"
+                fi
                 FILTER=${FILTER%?}
                 CMD="$CMD -filter_complex \"$FILTER\""
-                if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map \"[$V_MAP]\""; fi
+                CMD="$CMD -map \"[$V_MAP]\""
                 if [[ "$USE_A_FILTER" -eq 1 ]]; then CMD="$CMD -map \"[$A_MAP]\""; else CMD="$CMD -map $A_MAP?"; fi
               else
                 CMD="$CMD -map 0:v? -map $A_MAP?"
@@ -151,9 +150,6 @@
               FINAL_CMD="$CMD"
             fi
 
-            # ---------------------------------------------------------
-            # EKSEKUSI .SH DINAMIS UNTUK KEAMANAN KARAKTER BASH
-            # ---------------------------------------------------------
             printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
