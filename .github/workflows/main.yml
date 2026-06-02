@@ -318,10 +318,12 @@ jobs:
               fi
               
               if [[ -n "$TEXT" ]]; then
-                SAFE_TEXT="${TEXT//\'/\'\\\'\'}"
-                SAFE_TEXT="${SAFE_TEXT//\%/\\%}"
-                SAFE_TEXT="${SAFE_TEXT//\,/\\,}"
-                SAFE_TEXT="${SAFE_TEXT//\:/\\\\:}"
+                # FIX BARU: Perlindungan tingkat inti OS untuk mencegah Bash Injection & Cacat Teks
+                SAFE_TEXT="${TEXT//\\/\\\\\\\\}"
+                SAFE_TEXT="${SAFE_TEXT//\$/\\\\$}"
+                SAFE_TEXT="${SAFE_TEXT//\`/\\\\\`}"
+                SAFE_TEXT="${SAFE_TEXT//\"/\\\\\"}"
+                SAFE_TEXT="${SAFE_TEXT//\'/\\\\\'}"
                 
                 COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
                 SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
@@ -370,15 +372,26 @@ jobs:
               fi
               
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
+              
+              # Tentukan Video Codec
+              FINAL_V_CODEC="copy"
               if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
-                if [[ "$V_CODEC" == "default"* ]] || [[ "$V_CODEC" == "copy" ]]; then V_CODEC="libx264"; fi
-                CMD="$CMD -c:v $V_CODEC"
+                if [[ "$V_CODEC" == "default"* ]] || [[ "$V_CODEC" == "copy" ]]; then FINAL_V_CODEC="libx264"; else FINAL_V_CODEC="$V_CODEC"; fi
               else
-                if [[ "$V_CODEC" == "default"* ]]; then CMD="$CMD -c:v copy"; else CMD="$CMD -c:v $V_CODEC"; fi
+                if [[ "$V_CODEC" != "default"* ]]; then FINAL_V_CODEC="$V_CODEC"; fi
               fi
-              if [[ "$V_PRESET" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -preset $V_PRESET"; fi
+              
+              # FIX BARU: Memperbaiki variabel pencegat HEVC (x265)
+              if [[ "$FINAL_V_CODEC" == "libx265" && "$RTMP" == *"rtmp"* ]]; then
+                echo "⚠️ Peringatan: Container FLV (RTMP) tidak kompatibel dengan codec libx265 (HEVC). Memaksa downgrade ke libx264 agar tidak crash."
+                FINAL_V_CODEC="libx264"
+              fi
+              
+              CMD="$CMD -c:v $FINAL_V_CODEC"
+              
+              if [[ "$V_PRESET" != "default"* && "$FINAL_V_CODEC" != "copy" ]]; then CMD="$CMD -preset $V_PRESET"; fi
               if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
-              if [[ "$V_FPS" != "default"* && "$V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
+              if [[ "$V_FPS" != "default"* && "$FINAL_V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
               
               FORCE_A_ENCODE=0
               if [[ "$A_VOL_MAIN" != "default"* ]] || [[ "$A_VOL_EXT" != "default"* ]]; then FORCE_A_ENCODE=1; fi
@@ -395,7 +408,11 @@ jobs:
               fi
               if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
               
-              CMD="$CMD -f flv \"$RTMP/$KEY\""
+              # FIX BARU: Proteksi OS agar Stream Key yang memuat karakter dollar ($) tidak hancur
+              SAFE_RTMP="${RTMP//\$/\\\\$}"
+              SAFE_KEY="${KEY//\$/\\\\$}"
+              
+              CMD="$CMD -f flv \"$SAFE_RTMP/$SAFE_KEY\""
               
               FINAL_CMD="$CMD"
             fi
@@ -407,7 +424,6 @@ jobs:
             chmod +x run_stream.sh
             
             echo "================ MENJALANKAN PERINTAH ================"
-            # FIX: Melindungi baik rtmp:// maupun rtmps:// agar Stream Key tidak bocor di Log
             sed 's|rtmp.*://[^" ]*|rtmp(s)://[STREAM_KEY_DISENSOR]|g' run_stream.sh | grep -v "#!/bin/bash"
             echo "======================================================"
             
