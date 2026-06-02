@@ -12,6 +12,7 @@ on:
         description: '▶️ [INPUT VIDEO] URL (m3u8/mp4) atau Nama File'
         required: false
         default: 'input.mp4'
+     
       is_loop:
         description: '   ↳ Command Video: Loop Video? (-stream_loop)'
         type: choice
@@ -227,22 +228,19 @@ jobs:
           (
             while true; do
               git pull --rebase > /dev/null 2>&1
-              # FIX: Sleep diperlama agar tidak kena limit rate github
               sleep 60
             done
           ) &
           
+          if [[ -n "$TEXT" ]]; then
+            printf "%s\n" "$TEXT" > stream_text.txt
+          else
+            touch stream_text.txt
+          fi
+          
           while true; do
-            # FIX: File txt ini ditaruh di awal untuk jaga-jaga kalau mode Manual dijalankan
-            if [[ -n "$TEXT" ]]; then
-              printf "%s\n" "$TEXT" > stream_text.txt
-            else
-              touch stream_text.txt
-            fi
-
             FINAL_CMD=""
 
-            # FIX: Tetap menggunakan Bash Regex agar aman
             if [[ "$MANUAL_CMD" =~ [^[:space:]] ]]; then
               echo "======================================================"
               echo "⚠️ [MODE MANUAL AKTIF] Mengabaikan setting Dropdown!"
@@ -253,6 +251,7 @@ jobs:
               echo "======================================================"
               echo "⚙️ [MODE DROPDOWN AKTIF] Merakit command otomatis..."
               echo "======================================================"
+  
               CMD="ffmpeg"
               
               if [[ "$IS_RE" == "default (Gunakan -re)" ]]; then CMD="$CMD -re"; fi
@@ -260,32 +259,34 @@ jobs:
               if [[ "$VIDEO" == "http"* ]]; then
                 CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
               fi
-              CMD="$CMD -i "$VIDEO""
+              CMD="$CMD -i \"$VIDEO\""
               
               if [[ -n "$AUDIO" ]]; then
                 AUDIO_PRESENT=1
                 if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
                 if [[ "$AUDIO" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
-                CMD="$CMD -i "$AUDIO""
+                CMD="$CMD -i \"$AUDIO\""
               fi
               
               if [[ -n "$IMAGE" ]]; then
                 IMAGE_PRESENT=1
-                # FIX: Ubah ke lowercase agar .JPG dan .PNG (huruf besar) tetap lolos deteksi loop
                 IMAGE_LOWER=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
-                if [[ "$IMAGE_LOWER" == *".png" || "$IMAGE_LOWER" == *".jpg" || "$IMAGE_LOWER" == *".jpeg" || "$IMAGE_LOWER" == *".webp" ]]; then
-                  CMD="$CMD -loop 1"
-                fi
+                
+                # BUG 2 FIXED: Paksa loop statis kecuali spesifik file gif
                 if [[ "$IMAGE_LOWER" == *".gif" ]]; then
                   CMD="$CMD -ignore_loop 0"
+                else
+                  CMD="$CMD -loop 1"
                 fi
+                
                 if [[ "$IMAGE_LOWER" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
-                CMD="$CMD -i "$IMAGE""
+                CMD="$CMD -i \"$IMAGE\""
               fi
               
               FILTER=""
               V_MAP="0:v"
               A_MAP="0:a"
+            
               USE_A_FILTER=0
               FORCE_V_ENCODE_LAY=0
               
@@ -308,14 +309,13 @@ jobs:
                 if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
                 if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
                 if [[ "$IMG_POS" == "Kiri Bawah" ]]; then POS="10:H-h-10"; fi
-                # FIX FATAL: Ditambahkan :shortest=1 pada overlay gambar agar tidak terjadi infinite loop pada output
                 FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS:shortest=1[v_img];"
                 V_MAP="v_img"
               fi
               
               if [[ -n "$TEXT" ]]; then
                 COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
-                SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
+                SIZE="24"; if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
                 T_X="10"; T_Y="H-h-30"
                 if [[ "$TXT_POS" == "Bawah Tengah" ]]; then T_X="(W-w)/2"; T_Y="H-h-30"; fi
                 if [[ "$TXT_POS" == "Kiri Atas" ]]; then T_X="10"; T_Y="10"; fi
@@ -333,6 +333,7 @@ jobs:
                 HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
                 HAS_EXT_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$AUDIO" 2>/dev/null | head -n 1)
                 
+            
                 if [[ "$A_MIX" == "Gabungkan"* ]]; then
                   if [[ "$HAS_AUDIO" != "audio" ]]; then
                     echo "⚠️ Peringatan: Video asli bisu. Membatalkan 'amix'."
@@ -342,7 +343,7 @@ jobs:
                     A_MAP="0:a"
                   else
                     V_MAIN_FILT="volume=1.0"; if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$CLEAN_VOL_MAIN"; fi
-                    V_EXT_FILT="volume=1.0";  if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$CLEAN_VOL_EXT"; fi
+                    V_EXT_FILT="volume=1.0"; if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$CLEAN_VOL_EXT"; fi
                     FILTER="${FILTER}[0:a]${V_MAIN_FILT}[a_m];[1:a]${V_EXT_FILT}[a_e];[a_m][a_e]amix=inputs=2:duration=first[a_mix];"
                     A_MAP="a_mix"; USE_A_FILTER=1
                   fi
@@ -358,11 +359,12 @@ jobs:
                 A_MAP="0:a"
               fi
               
+        
               if [[ -n "$FILTER" ]]; then
                 FILTER=${FILTER%?}
-                CMD="$CMD -filter_complex "$FILTER""
-                if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map "[$V_MAP]""; fi
-                if [[ "$USE_A_FILTER" -eq 1 ]]; then CMD="$CMD -map "[$A_MAP]""; else CMD="$CMD -map $A_MAP?"; fi
+                CMD="$CMD -filter_complex \"$FILTER\""
+                if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map \"[$V_MAP]\""; fi
+                if [[ "$USE_A_FILTER" -eq 1 ]]; then CMD="$CMD -map \"[$A_MAP]\""; else CMD="$CMD -map $A_MAP?"; fi
               else
                 CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
@@ -412,7 +414,6 @@ jobs:
                  if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$AUDIO"; fi
                  
                  ORIG_A_CODEC=$(timeout 15s ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$TARGET_AUDIO_FILE" 2>/dev/null | head -n 1)
-                 # FIX: Selalu jalan walau probe timeout
                  if [[ "$ORIG_A_CODEC" != "aac" && "$ORIG_A_CODEC" != "mp3" ]]; then
                     echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV/RTMP atau gagal dibaca. Memaksa downgrade ke aac."
                     FINAL_A_CODEC="aac"
@@ -423,26 +424,25 @@ jobs:
 
               if [[ "$FINAL_A_CODEC" != "copy" && "$USE_A_FILTER" -eq 0 ]]; then
                  if [[ -n "$AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then 
-                    if [[ "$A_MAP" == "1:a" ]]; then CMD="$CMD -af "volume=$CLEAN_VOL_EXT""; fi
+                    if [[ "$A_MAP" == "1:a" ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_EXT\""; fi
                  fi
                  if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then 
                     HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
                     if [[ "$HAS_AUDIO" == "audio" ]]; then
-                       CMD="$CMD -af "volume=$CLEAN_VOL_MAIN""
+                       CMD="$CMD -af \"volume=$CLEAN_VOL_MAIN\""
                     fi
                  fi
               fi
               
+          
               if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
               
-              # FIX: Menggunakan single quotes untuk membungkus output url agar terhindar dari variabel injeksi Bash
               CMD="$CMD -f flv '$RTMP/$KEY'"
               
               FINAL_CMD="$CMD"
             fi
 
-            printf "%s
-" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
+            printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
             echo "================ MENJALANKAN PERINTAH ================"
