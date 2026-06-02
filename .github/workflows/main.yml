@@ -178,7 +178,7 @@ on:
       rtmp_link:
         description: '🚀 Link RTMP Server'
         required: false
-        default: 'rtmp://[a.rtmp.youtube.com/live2](https://a.rtmp.youtube.com/live2)'
+        default: 'rtmp://a.rtmp.youtube.com/live2'
       stream_key:
         description: '🔑 Stream Key'
         required: false
@@ -234,9 +234,12 @@ jobs:
           while true; do
             FINAL_CMD=""
 
-            if [[ -n "$MANUAL_CMD" ]]; then
+            # FIX: Membersihkan input manual dari spasi kosong untuk mencegah error
+            CLEAN_MANUAL=$(echo "$MANUAL_CMD" | xargs)
+
+            if [[ -n "$CLEAN_MANUAL" ]]; then
               echo "[SISTEM DIALIHKAN] Menggunakan murni command dari Generator HTML..."
-              FINAL_CMD="$MANUAL_CMD"
+              FINAL_CMD="$CLEAN_MANUAL"
             else
               echo "Menyusun komponen perintah otomatis dari dropdown..."
               CMD="ffmpeg"
@@ -315,8 +318,9 @@ jobs:
               CLEAN_VOL_EXT=$(echo "$A_VOL_EXT" | awk '{print $1}')
 
               if [[ -n "$AUDIO" ]]; then
-                HAS_AUDIO=$(timeout 10s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
-                HAS_EXT_AUDIO=$(timeout 10s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$AUDIO" 2>/dev/null | head -n 1)
+                # FIX: Naikkan timeout ke 15s agar tidak error saat link m3u8 lambat
+                HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                HAS_EXT_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$AUDIO" 2>/dev/null | head -n 1)
                 
                 if [[ "$A_MIX" == "Gabungkan"* ]]; then
                   if [[ "$HAS_AUDIO" != "audio" ]]; then
@@ -365,7 +369,8 @@ jobs:
                 echo "⚠️ Peringatan: Container FLV (RTMP) tidak kompatibel dengan codec libx265 (HEVC). Memaksa downgrade ke libx264."
                 FINAL_V_CODEC="libx264"
               elif [[ "$FINAL_V_CODEC" == "copy" && "$RTMP" == *"rtmp"* ]]; then
-                ORIG_V_CODEC=$(timeout 10s ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                # FIX: Timeout ke 15s
+                ORIG_V_CODEC=$(timeout 15s ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
                 if [[ "$ORIG_V_CODEC" == "hevc" || "$ORIG_V_CODEC" == "h265" ]]; then
                    echo "⚠️ Peringatan: Video asli HEVC ditolak oleh RTMP (Mode Copy). Memaksa encode ke libx264."
                    FINAL_V_CODEC="libx264"
@@ -396,7 +401,8 @@ jobs:
                  TARGET_AUDIO_FILE="$VIDEO"
                  if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$AUDIO"; fi
                  
-                 ORIG_A_CODEC=$(timeout 10s ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$TARGET_AUDIO_FILE" 2>/dev/null | head -n 1)
+                 # FIX: Timeout ke 15s
+                 ORIG_A_CODEC=$(timeout 15s ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$TARGET_AUDIO_FILE" 2>/dev/null | head -n 1)
                  if [[ "$ORIG_A_CODEC" != "aac" && "$ORIG_A_CODEC" != "mp3" && -n "$ORIG_A_CODEC" ]]; then
                     echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV/RTMP. Memaksa downgrade ke aac."
                     FINAL_A_CODEC="aac"
@@ -410,7 +416,8 @@ jobs:
                     if [[ "$A_MAP" == "1:a" ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_EXT\""; fi
                  fi
                  if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then 
-                    HAS_AUDIO=$(timeout 10s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                    # FIX: Timeout ke 15s
+                    HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
                     if [[ "$HAS_AUDIO" == "audio" ]]; then
                        CMD="$CMD -af \"volume=$CLEAN_VOL_MAIN\""
                     fi
