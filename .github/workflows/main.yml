@@ -9,7 +9,7 @@ on:
         default: ''
 
       video:
-        description: '▶️ [INPUT VIDEO] URL (m3u8/mp4/YouTube) atau File'
+        description: '▶️ [INPUT VIDEO] URL (m3u8/mp4) atau Nama File'
         required: false
         default: 'input.mp4'
      
@@ -73,7 +73,7 @@ on:
         default: 'default (Asli)'
 
       audio:
-        description: '🎵 [INPUT AUDIO] Opsional (Link YouTube/Audio Extra)'
+        description: '🎵 [INPUT AUDIO] Opsional (Kosongkan jika pakai audio asli video)'
         required: false
         default: ''
       audio_mix:
@@ -192,26 +192,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up FFmpeg 8, Fonts, yt-dlp & Core Hybrid
-        env:
-          YT_COOKIES: ${{ secrets.YT_COOKIES }}
+      - name: Set up FFmpeg 8 & Fonts
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
-          # Instal nodejs untuk memecahkan puzzle JS jika Mode Private dipakai
-          sudo apt install ffmpeg fonts-freefont-ttf nodejs -y -qq > /dev/null
-          sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-          sudo chmod a+rx /usr/local/bin/yt-dlp
-          
-          # Siapkan Cookies di belakang layar (tanpa memaksa yt-dlp menggunakannya secara global)
-          mkdir -p ~/.config/yt-dlp
-          if [[ -n "$YT_COOKIES" ]]; then
-            echo "$YT_COOKIES" > ~/.config/yt-dlp/cookies.txt
-            echo "✅ Cookies YouTube disimpan dan siap digunakan untuk Mode Private!"
-          else
-            touch ~/.config/yt-dlp/cookies.txt
-            echo "⚠️ Secret YT_COOKIES kosong. Mode Private YouTube akan gagal jika digunakan."
-          fi
+          sudo apt install ffmpeg fonts-freefont-ttf -y -qq > /dev/null
           
       - name: Jalankan Core Engine FFmpeg
         env:
@@ -252,6 +237,7 @@ jobs:
             if [[ "$MANUAL_CMD" =~ [^[:space:]] ]]; then
               echo "======================================================"
               echo "⚠️ [MODE MANUAL AKTIF] Mengabaikan setting Dropdown!"
+              echo "Menggunakan murni command dari HTML Generator..."
               echo "======================================================"
               FINAL_CMD="$MANUAL_CMD"
             else
@@ -259,32 +245,20 @@ jobs:
               echo "⚙️ [MODE DROPDOWN AKTIF] Merakit command otomatis..."
               echo "======================================================"
   
-              RESOLVED_VIDEO="$VIDEO"
-              if [[ "$VIDEO" == *"youtube.com"* || "$VIDEO" == *"youtu.be"* ]]; then
-                 echo "🔄 Mengekstrak M3U8/Media Video dari YouTube (Mode Publik Default)..."
-                 RESOLVED_VIDEO=$(yt-dlp --extractor-args 'youtube:player_client=android,tv' -g -f 'best[height<=720]/best' "$VIDEO" | head -n 1)
-              fi
-              
-              RESOLVED_AUDIO="$AUDIO"
-              if [[ -n "$AUDIO" ]] && [[ "$AUDIO" == *"youtube.com"* || "$AUDIO" == *"youtu.be"* ]]; then
-                 echo "🔄 Mengekstrak Media Audio dari YouTube (Mode Publik Default)..."
-                 RESOLVED_AUDIO=$(yt-dlp --extractor-args 'youtube:player_client=android,tv' -g -f 'bestaudio/best' "$AUDIO" | head -n 1)
-              fi
-
               CMD="ffmpeg"
               
               if [[ "$IS_RE" == "default (Gunakan -re)" ]]; then CMD="$CMD -re"; fi
               if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
-              if [[ "$RESOLVED_VIDEO" == "http"* ]]; then
+              if [[ "$VIDEO" == "http"* ]]; then
                 CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
               fi
-              CMD="$CMD -i \"$RESOLVED_VIDEO\""
+              CMD="$CMD -i \"$VIDEO\""
               
-              if [[ -n "$RESOLVED_AUDIO" ]]; then
+              if [[ -n "$AUDIO" ]]; then
                 AUDIO_PRESENT=1
                 if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
-                if [[ "$RESOLVED_AUDIO" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
-                CMD="$CMD -i \"$RESOLVED_AUDIO\""
+                if [[ "$AUDIO" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
+                CMD="$CMD -i \"$AUDIO\""
               fi
               
               if [[ -n "$IMAGE" ]]; then
@@ -317,7 +291,7 @@ jobs:
               fi
               
               if [[ "$IMAGE_PRESENT" -eq 1 ]]; then
-                IMG_IDX="1"; if [[ -n "$RESOLVED_AUDIO" ]]; then IMG_IDX="2"; fi
+                IMG_IDX="1"; if [[ -n "$AUDIO" ]]; then IMG_IDX="2"; fi
                 SCALE_CMD=""
                 if [[ "$IMG_SCALE" != "default"* ]]; then 
                   CLEAN_SCALE=$(echo "$IMG_SCALE" | awk '{print $1}')
@@ -347,10 +321,11 @@ jobs:
               CLEAN_VOL_MAIN=$(echo "$A_VOL_MAIN" | awk '{print $1}')
               CLEAN_VOL_EXT=$(echo "$A_VOL_EXT" | awk '{print $1}')
 
-              if [[ -n "$RESOLVED_AUDIO" ]]; then
-                HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$RESOLVED_VIDEO" 2>/dev/null | head -n 1)
-                HAS_EXT_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$RESOLVED_AUDIO" 2>/dev/null | head -n 1)
+              if [[ -n "$AUDIO" ]]; then
+                HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                HAS_EXT_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$AUDIO" 2>/dev/null | head -n 1)
                 
+            
                 if [[ "$A_MIX" == "Gabungkan"* ]]; then
                   if [[ "$HAS_AUDIO" != "audio" ]]; then
                     echo "⚠️ Peringatan: Video asli bisu. Membatalkan 'amix'."
@@ -376,6 +351,7 @@ jobs:
                 A_MAP="0:a"
               fi
               
+        
               if [[ -n "$FILTER" ]]; then
                 FILTER=${FILTER%?}
                 CMD="$CMD -filter_complex \"$FILTER\""
@@ -388,19 +364,19 @@ jobs:
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
               
               FINAL_V_CODEC="copy"
-              if [[ "$FORCE_V_ENCODE" -eq 1 ]] || [[ "$VIDEO" == *"youtube.com"* || "$VIDEO" == *"youtu.be"* ]]; then
+              if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
                 if [[ "$V_CODEC" == "default"* ]] || [[ "$V_CODEC" == "copy" ]]; then FINAL_V_CODEC="libx264"; else FINAL_V_CODEC="$V_CODEC"; fi
               else
                 if [[ "$V_CODEC" != "default"* ]]; then FINAL_V_CODEC="$V_CODEC"; fi
               fi
               
               if [[ "$FINAL_V_CODEC" == "libx265" && "$RTMP" == *"rtmp"* ]]; then
-                echo "⚠️ Peringatan: Container FLV tidak kompatibel libx265. Downgrade ke libx264."
+                echo "⚠️ Peringatan: Container FLV (RTMP) tidak kompatibel dengan codec libx265 (HEVC). Memaksa downgrade ke libx264."
                 FINAL_V_CODEC="libx264"
               elif [[ "$FINAL_V_CODEC" == "copy" && "$RTMP" == *"rtmp"* ]]; then
-                ORIG_V_CODEC=$(timeout 15s ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$RESOLVED_VIDEO" 2>/dev/null | head -n 1)
-                if [[ "$ORIG_V_CODEC" == "hevc" || "$ORIG_V_CODEC" == "h265" || "$ORIG_V_CODEC" == "vp9" || "$ORIG_V_CODEC" == "av1" ]]; then
-                   echo "⚠️ Peringatan: Video asli ($ORIG_V_CODEC) ditolak oleh RTMP (Mode Copy). Memaksa encode libx264."
+                ORIG_V_CODEC=$(timeout 15s ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                if [[ "$ORIG_V_CODEC" == "hevc" || "$ORIG_V_CODEC" == "h265" ]]; then
+                   echo "⚠️ Peringatan: Video asli HEVC ditolak oleh RTMP (Mode Copy). Memaksa encode ke libx264."
                    FINAL_V_CODEC="libx264"
                 fi
               fi
@@ -419,19 +395,19 @@ jobs:
               if [[ "$A_VOL_MAIN" != "default"* ]] || [[ "$A_VOL_EXT" != "default"* ]]; then FORCE_A_ENCODE=1; fi
 
               FINAL_A_CODEC="copy"
-              if [[ "$USE_A_FILTER" -eq 1 ]] || [[ "$FORCE_A_ENCODE" -eq 1 ]] || [[ "$VIDEO" == *"youtube.com"* || "$VIDEO" == *"youtu.be"* ]]; then
+              if [[ "$USE_A_FILTER" -eq 1 ]] || [[ "$FORCE_A_ENCODE" -eq 1 ]]; then
                 if [[ "$A_CODEC" == "default"* ]] || [[ "$A_CODEC" == "copy" ]]; then FINAL_A_CODEC="aac"; else FINAL_A_CODEC="$A_CODEC"; fi
               else
                 if [[ "$A_CODEC" != "default"* ]]; then FINAL_A_CODEC="$A_CODEC"; fi
               fi
 
               if [[ "$FINAL_A_CODEC" == "copy" && "$RTMP" == *"rtmp"* ]]; then
-                 TARGET_AUDIO_FILE="$RESOLVED_VIDEO"
-                 if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$RESOLVED_AUDIO"; fi
+                 TARGET_AUDIO_FILE="$VIDEO"
+                 if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$AUDIO"; fi
                  
                  ORIG_A_CODEC=$(timeout 15s ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$TARGET_AUDIO_FILE" 2>/dev/null | head -n 1)
                  if [[ "$ORIG_A_CODEC" != "aac" && "$ORIG_A_CODEC" != "mp3" ]]; then
-                    echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV. Downgrade ke aac."
+                    echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV/RTMP atau gagal dibaca. Memaksa downgrade ke aac."
                     FINAL_A_CODEC="aac"
                  fi
               fi
@@ -439,19 +415,22 @@ jobs:
               CMD="$CMD -c:a $FINAL_A_CODEC"
 
               if [[ "$FINAL_A_CODEC" != "copy" && "$USE_A_FILTER" -eq 0 ]]; then
-                 if [[ -n "$RESOLVED_AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then 
+                 if [[ -n "$AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then 
                     if [[ "$A_MAP" == "1:a" ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_EXT\""; fi
                  fi
-                 if [[ -z "$RESOLVED_AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then 
-                    HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$RESOLVED_VIDEO" 2>/dev/null | head -n 1)
+                 if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then 
+                    HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
                     if [[ "$HAS_AUDIO" == "audio" ]]; then
                        CMD="$CMD -af \"volume=$CLEAN_VOL_MAIN\""
                     fi
                  fi
               fi
               
+          
               if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
+              
               CMD="$CMD -f flv '$RTMP/$KEY'"
+              
               FINAL_CMD="$CMD"
             fi
 
