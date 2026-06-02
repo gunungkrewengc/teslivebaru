@@ -234,14 +234,18 @@ jobs:
           while true; do
             FINAL_CMD=""
 
-            # FIX: Membersihkan input manual dari spasi kosong untuk mencegah error
-            CLEAN_MANUAL=$(echo "$MANUAL_CMD" | xargs)
-
-            if [[ -n "$CLEAN_MANUAL" ]]; then
-              echo "[SISTEM DIALIHKAN] Menggunakan murni command dari Generator HTML..."
-              FINAL_CMD="$CLEAN_MANUAL"
+            # FIX FINAL: Menggunakan Bash Regex agar tanda kutip TIDAK terhapus,
+            # Namun tetap aman kalau user cuma mengetik spasi kosong.
+            if [[ "$MANUAL_CMD" =~ [^[:space:]] ]]; then
+              echo "======================================================"
+              echo "⚠️ [MODE MANUAL AKTIF] Mengabaikan setting Dropdown!"
+              echo "Menggunakan murni command dari HTML Generator..."
+              echo "======================================================"
+              FINAL_CMD="$MANUAL_CMD"
             else
-              echo "Menyusun komponen perintah otomatis dari dropdown..."
+              echo "======================================================"
+              echo "⚙️ [MODE DROPDOWN AKTIF] Merakit command otomatis..."
+              echo "======================================================"
               CMD="ffmpeg"
               
               if [[ "$IS_RE" == "default (Gunakan -re)" ]]; then CMD="$CMD -re"; fi
