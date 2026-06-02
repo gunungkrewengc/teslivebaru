@@ -227,11 +227,19 @@ jobs:
           (
             while true; do
               git pull --rebase > /dev/null 2>&1
-              sleep 10
+              sleep 60
             done
           ) &
           
           while true; do
+            # PERBAIKAN FATAL: stream_text.txt di-generate selalu di paling awal loop agar aman
+            # di semua mode (Manual bypass maupun Dropdown otomatis)
+            if [[ -n "$TEXT" ]]; then
+              printf "%s\n" "$TEXT" > stream_text.txt
+            else
+              touch stream_text.txt
+            fi
+
             FINAL_CMD=""
 
             # FIX FINAL: Menggunakan Bash Regex agar tanda kutip TIDAK terhapus,
@@ -253,13 +261,13 @@ jobs:
               if [[ "$VIDEO" == "http"* ]]; then
                 CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"
               fi
-              CMD="$CMD -i \"$VIDEO\""
+              CMD="$CMD -i "$VIDEO""
               
               if [[ -n "$AUDIO" ]]; then
                 AUDIO_PRESENT=1
                 if [[ "$IS_LOOP" == "Loop Terus Menerus (-1)" ]]; then CMD="$CMD -stream_loop -1"; fi
                 if [[ "$AUDIO" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
-                CMD="$CMD -i \"$AUDIO\""
+                CMD="$CMD -i "$AUDIO""
               fi
               
               if [[ -n "$IMAGE" ]]; then
@@ -271,7 +279,7 @@ jobs:
                   CMD="$CMD -ignore_loop 0"
                 fi
                 if [[ "$IMAGE" == "http"* ]]; then CMD="$CMD -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -rw_timeout 15000000"; fi
-                CMD="$CMD -i \"$IMAGE\""
+                CMD="$CMD -i "$IMAGE""
               fi
               
               FILTER=""
@@ -304,8 +312,6 @@ jobs:
               fi
               
               if [[ -n "$TEXT" ]]; then
-                printf "%s\n" "$TEXT" > stream_text.txt
-                
                 COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
                 SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
                 T_X="10"; T_Y="H-h-30"
@@ -322,7 +328,6 @@ jobs:
               CLEAN_VOL_EXT=$(echo "$A_VOL_EXT" | awk '{print $1}')
 
               if [[ -n "$AUDIO" ]]; then
-                # FIX: Naikkan timeout ke 15s agar tidak error saat link m3u8 lambat
                 HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
                 HAS_EXT_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$AUDIO" 2>/dev/null | head -n 1)
                 
@@ -353,9 +358,9 @@ jobs:
               
               if [[ -n "$FILTER" ]]; then
                 FILTER=${FILTER%?}
-                CMD="$CMD -filter_complex \"$FILTER\""
-                if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map \"[$V_MAP]\""; fi
-                if [[ "$USE_A_FILTER" -eq 1 ]]; then CMD="$CMD -map \"[$A_MAP]\""; else CMD="$CMD -map $A_MAP?"; fi
+                CMD="$CMD -filter_complex "$FILTER""
+                if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map "[$V_MAP]""; fi
+                if [[ "$USE_A_FILTER" -eq 1 ]]; then CMD="$CMD -map "[$A_MAP]""; else CMD="$CMD -map $A_MAP?"; fi
               else
                 CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
@@ -373,7 +378,6 @@ jobs:
                 echo "⚠️ Peringatan: Container FLV (RTMP) tidak kompatibel dengan codec libx265 (HEVC). Memaksa downgrade ke libx264."
                 FINAL_V_CODEC="libx264"
               elif [[ "$FINAL_V_CODEC" == "copy" && "$RTMP" == *"rtmp"* ]]; then
-                # FIX: Timeout ke 15s
                 ORIG_V_CODEC=$(timeout 15s ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
                 if [[ "$ORIG_V_CODEC" == "hevc" || "$ORIG_V_CODEC" == "h265" ]]; then
                    echo "⚠️ Peringatan: Video asli HEVC ditolak oleh RTMP (Mode Copy). Memaksa encode ke libx264."
@@ -405,10 +409,10 @@ jobs:
                  TARGET_AUDIO_FILE="$VIDEO"
                  if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$AUDIO"; fi
                  
-                 # FIX: Timeout ke 15s
                  ORIG_A_CODEC=$(timeout 15s ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$TARGET_AUDIO_FILE" 2>/dev/null | head -n 1)
-                 if [[ "$ORIG_A_CODEC" != "aac" && "$ORIG_A_CODEC" != "mp3" && -n "$ORIG_A_CODEC" ]]; then
-                    echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV/RTMP. Memaksa downgrade ke aac."
+                 # PERBAIKAN: Dihilangkan && -n "$ORIG_A_CODEC" agar ketika ffprobe lambat / timeout, stream tetap dipaksa fallback ke aac untuk asuransi keamanan
+                 if [[ "$ORIG_A_CODEC" != "aac" && "$ORIG_A_CODEC" != "mp3" ]]; then
+                    echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV/RTMP atau gagal dibaca. Memaksa downgrade ke aac."
                     FINAL_A_CODEC="aac"
                  fi
               fi
@@ -417,13 +421,12 @@ jobs:
 
               if [[ "$FINAL_A_CODEC" != "copy" && "$USE_A_FILTER" -eq 0 ]]; then
                  if [[ -n "$AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then 
-                    if [[ "$A_MAP" == "1:a" ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_EXT\""; fi
+                    if [[ "$A_MAP" == "1:a" ]]; then CMD="$CMD -af "volume=$CLEAN_VOL_EXT""; fi
                  fi
                  if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then 
-                    # FIX: Timeout ke 15s
                     HAS_AUDIO=$(timeout 15s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
                     if [[ "$HAS_AUDIO" == "audio" ]]; then
-                       CMD="$CMD -af \"volume=$CLEAN_VOL_MAIN\""
+                       CMD="$CMD -af "volume=$CLEAN_VOL_MAIN""
                     fi
                  fi
               fi
@@ -431,16 +434,16 @@ jobs:
               if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
               
               SAFE_RTMP="${RTMP//\\/\\\\\\\\}"
-              SAFE_RTMP="${SAFE_RTMP//\`/\\\\\`}"
+              SAFE_RTMP="${SAFE_RTMP//\\`/\\\\\\`}"
               SAFE_RTMP="${SAFE_RTMP//\$/\\\\$}"
               SAFE_RTMP="${SAFE_RTMP//\"/\\\\\"}"
               
               SAFE_KEY="${KEY//\\/\\\\\\\\}"
-              SAFE_KEY="${SAFE_KEY//\`/\\\\\`}"
+              SAFE_KEY="${SAFE_KEY//\\`/\\\\\\`}"
               SAFE_KEY="${SAFE_KEY//\$/\\\\$}"
               SAFE_KEY="${SAFE_KEY//\"/\\\\\"}"
               
-              CMD="$CMD -f flv \"$SAFE_RTMP/$SAFE_KEY\""
+              CMD="$CMD -f flv "$SAFE_RTMP/$SAFE_KEY""
               
               FINAL_CMD="$CMD"
             fi
