@@ -192,13 +192,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up FFmpeg 8, Fonts & yt-dlp
+      - name: Set up FFmpeg 8, Fonts & yt-dlp (With Cookies)
+        env:
+          YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
           sudo apt install ffmpeg fonts-freefont-ttf -y -qq > /dev/null
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
+          
+          # --- INJEKSI COOKIES OTOMATIS ---
+          mkdir -p ~/.config/yt-dlp
+          if [[ -n "$YT_COOKIES" ]]; then
+            echo "$YT_COOKIES" > ~/.config/yt-dlp/cookies.txt
+            echo "--cookies ~/.config/yt-dlp/cookies.txt" > ~/.config/yt-dlp/config
+            echo "✅ Kunci Cookies YouTube berhasil disuntikkan!"
+          else
+            echo "⚠️ Secret YT_COOKIES tidak ditemukan, yt-dlp berjalan tanpa login (Rawan blokir bot)..."
+          fi
           
       - name: Jalankan Core Engine FFmpeg
         env:
@@ -246,7 +258,6 @@ jobs:
               echo "⚙️ [MODE DROPDOWN AKTIF] Merakit command otomatis..."
               echo "======================================================"
   
-              # FIX BUG 3: Menyelesaikan URL YouTube Dropdown ke M3U8 sebelum di-probe
               RESOLVED_VIDEO="$VIDEO"
               if [[ "$VIDEO" == *"youtube.com"* || "$VIDEO" == *"youtu.be"* ]]; then
                  echo "🔄 Mengekstrak M3U8/Media Video dari YouTube..."
@@ -375,7 +386,6 @@ jobs:
               
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
               
-              # FIX BUG 1 untuk YAML Dropdown: Jika link YouTube, hindari Copy Codec yang bisa membawa format VP9
               FINAL_V_CODEC="copy"
               if [[ "$FORCE_V_ENCODE" -eq 1 ]] || [[ "$VIDEO" == *"youtube.com"* || "$VIDEO" == *"youtu.be"* ]]; then
                 if [[ "$V_CODEC" == "default"* ]] || [[ "$V_CODEC" == "copy" ]]; then FINAL_V_CODEC="libx264"; else FINAL_V_CODEC="$V_CODEC"; fi
