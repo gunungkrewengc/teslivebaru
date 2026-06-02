@@ -313,17 +313,12 @@ jobs:
                 if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
                 if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
                 if [[ "$IMG_POS" == "Kiri Bawah" ]]; then POS="10:H-h-10"; fi
-                FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS:shortest=1[v_img];"
+                FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS[v_img];"
                 V_MAP="v_img"
               fi
               
               if [[ -n "$TEXT" ]]; then
-                # FIX BARU: Perlindungan tingkat inti OS untuk mencegah Bash Injection & Cacat Teks
-                SAFE_TEXT="${TEXT//\\/\\\\\\\\}"
-                SAFE_TEXT="${SAFE_TEXT//\$/\\\\$}"
-                SAFE_TEXT="${SAFE_TEXT//\`/\\\\\`}"
-                SAFE_TEXT="${SAFE_TEXT//\"/\\\\\"}"
-                SAFE_TEXT="${SAFE_TEXT//\'/\\\\\'}"
+                printf "%s\n" "$TEXT" > stream_text.txt
                 
                 COLOR="white"; if [[ "$TXT_COLOR" != "default"* ]]; then COLOR="$TXT_COLOR"; fi
                 SIZE="24";     if [[ "$TXT_SIZE" != "default"* ]];  then SIZE="$TXT_SIZE"; fi
@@ -333,7 +328,7 @@ jobs:
                 if [[ "$TXT_POS" == "Kanan Atas" ]]; then T_X="W-w-10"; T_Y="10"; fi
                 if [[ "$TXT_POS" == "Tengah Screen" ]]; then T_X="(W-w)/2"; T_Y="(H-h)/2"; fi
                 FONT_PATH="/usr/share/fonts/truetype/freefont/FreeSans.ttf"
-                FILTER="${FILTER}[$V_MAP]drawtext=fontfile=${FONT_PATH}:text='$SAFE_TEXT':fontcolor=$COLOR:fontsize=$SIZE:x=$T_X:y=$T_Y[v_txt];"
+                FILTER="${FILTER}[$V_MAP]drawtext=fontfile=${FONT_PATH}:textfile=stream_text.txt:reload=1:fontcolor=$COLOR:fontsize=$SIZE:x=$T_X:y=$T_Y[v_txt];"
                 V_MAP="v_txt"
               fi
               
@@ -341,12 +336,16 @@ jobs:
               CLEAN_VOL_EXT=$(echo "$A_VOL_EXT" | awk '{print $1}')
 
               if [[ -n "$AUDIO" ]]; then
+                HAS_AUDIO=$(timeout 10s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                HAS_EXT_AUDIO=$(timeout 10s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$AUDIO" 2>/dev/null | head -n 1)
+                
                 if [[ "$A_MIX" == "Gabungkan"* ]]; then
-                  HAS_AUDIO=$(ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
-                  
                   if [[ "$HAS_AUDIO" != "audio" ]]; then
-                    echo "⚠️ Peringatan: Video asli bisu. Membatalkan 'amix' agar FFmpeg tidak crash, menggunakan audio lagu saja."
+                    echo "⚠️ Peringatan: Video asli bisu. Membatalkan 'amix'."
                     A_MAP="1:a"
+                  elif [[ "$HAS_EXT_AUDIO" != "audio" ]]; then
+                    echo "⚠️ Peringatan: Audio tambahan tidak valid/bisu. Membatalkan 'amix'."
+                    A_MAP="0:a"
                   else
                     V_MAIN_FILT="volume=1.0"; if [[ "$A_VOL_MAIN" != "default"* ]]; then V_MAIN_FILT="volume=$CLEAN_VOL_MAIN"; fi
                     V_EXT_FILT="volume=1.0";  if [[ "$A_VOL_EXT" != "default"* ]]; then V_EXT_FILT="volume=$CLEAN_VOL_EXT"; fi
@@ -354,15 +353,18 @@ jobs:
                     A_MAP="a_mix"; USE_A_FILTER=1
                   fi
                 else
-                  A_MAP="1:a"
+                  if [[ "$HAS_EXT_AUDIO" == "audio" ]]; then
+                    A_MAP="1:a"
+                  else
+                    echo "⚠️ Peringatan: Audio tambahan tidak valid/bisu. Menggunakan audio asli kembali."
+                    A_MAP="0:a"
+                  fi
                 fi
+              else
+                A_MAP="0:a"
               fi
               
               if [[ -n "$FILTER" ]]; then
-                if [[ "$V_MAP" != "0:v" ]]; then
-                  FILTER="${FILTER}[$V_MAP]format=yuv420p[v_final];"
-                  V_MAP="v_final"
-                fi
                 FILTER=${FILTER%?}
                 CMD="$CMD -filter_complex \"$FILTER\""
                 if [[ "$V_MAP" == "0:v" ]]; then CMD="$CMD -map 0:v?"; else CMD="$CMD -map \"[$V_MAP]\""; fi
@@ -371,9 +373,11 @@ jobs:
                 CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
               
+              # =======================================================
+              # ENCODER VIDEO & PENCEGAT HEVC COPY
+              # =======================================================
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
               
-              # Tentukan Video Codec
               FINAL_V_CODEC="copy"
               if [[ "$FORCE_V_ENCODE" -eq 1 ]]; then
                 if [[ "$V_CODEC" == "default"* ]] || [[ "$V_CODEC" == "copy" ]]; then FINAL_V_CODEC="libx264"; else FINAL_V_CODEC="$V_CODEC"; fi
@@ -381,36 +385,79 @@ jobs:
                 if [[ "$V_CODEC" != "default"* ]]; then FINAL_V_CODEC="$V_CODEC"; fi
               fi
               
-              # FIX BARU: Memperbaiki variabel pencegat HEVC (x265)
+              # FIX BARU: Mencegat HEVC dari dropdown ATAU dari sumber video asli jika mode copy aktif
               if [[ "$FINAL_V_CODEC" == "libx265" && "$RTMP" == *"rtmp"* ]]; then
-                echo "⚠️ Peringatan: Container FLV (RTMP) tidak kompatibel dengan codec libx265 (HEVC). Memaksa downgrade ke libx264 agar tidak crash."
+                echo "⚠️ Peringatan: Container FLV (RTMP) tidak kompatibel dengan codec libx265 (HEVC). Memaksa downgrade ke libx264."
                 FINAL_V_CODEC="libx264"
+              elif [[ "$FINAL_V_CODEC" == "copy" && "$RTMP" == *"rtmp"* ]]; then
+                ORIG_V_CODEC=$(timeout 10s ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                if [[ "$ORIG_V_CODEC" == "hevc" || "$ORIG_V_CODEC" == "h265" ]]; then
+                   echo "⚠️ Peringatan: Video asli HEVC ditolak oleh RTMP (Mode Copy). Memaksa encode ke libx264."
+                   FINAL_V_CODEC="libx264"
+                fi
               fi
               
               CMD="$CMD -c:v $FINAL_V_CODEC"
+              
+              if [[ "$FINAL_V_CODEC" != "copy" ]]; then
+                CMD="$CMD -pix_fmt yuv420p"
+              fi
               
               if [[ "$V_PRESET" != "default"* && "$FINAL_V_CODEC" != "copy" ]]; then CMD="$CMD -preset $V_PRESET"; fi
               if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
               if [[ "$V_FPS" != "default"* && "$FINAL_V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
               
+              # =======================================================
+              # ENCODER AUDIO & PENCEGAT OPUS/VORBIS COPY
+              # =======================================================
               FORCE_A_ENCODE=0
               if [[ "$A_VOL_MAIN" != "default"* ]] || [[ "$A_VOL_EXT" != "default"* ]]; then FORCE_A_ENCODE=1; fi
 
+              FINAL_A_CODEC="copy"
               if [[ "$USE_A_FILTER" -eq 1 ]] || [[ "$FORCE_A_ENCODE" -eq 1 ]]; then
-                if [[ "$A_CODEC" == "default"* ]] || [[ "$A_CODEC" == "copy" ]]; then A_CODEC="aac"; fi
-                CMD="$CMD -c:a $A_CODEC"
-                if [[ "$USE_A_FILTER" -eq 0 ]]; then
-                   if [[ -n "$AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_EXT\""; fi
-                   if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_MAIN\""; fi
-                fi
+                if [[ "$A_CODEC" == "default"* ]] || [[ "$A_CODEC" == "copy" ]]; then FINAL_A_CODEC="aac"; else FINAL_A_CODEC="$A_CODEC"; fi
               else
-                if [[ "$A_CODEC" == "default"* ]]; then CMD="$CMD -c:a copy"; else CMD="$CMD -c:a $A_CODEC"; fi
+                if [[ "$A_CODEC" != "default"* ]]; then FINAL_A_CODEC="$A_CODEC"; fi
               fi
+
+              # FIX BARU: Mencegat Opus/Vorbis secara dinamis pada audio utama maupun audio pengganti
+              if [[ "$FINAL_A_CODEC" == "copy" && "$RTMP" == *"rtmp"* ]]; then
+                 TARGET_AUDIO_FILE="$VIDEO"
+                 if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$AUDIO"; fi
+                 
+                 ORIG_A_CODEC=$(timeout 10s ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$TARGET_AUDIO_FILE" 2>/dev/null | head -n 1)
+                 if [[ "$ORIG_A_CODEC" != "aac" && "$ORIG_A_CODEC" != "mp3" && -n "$ORIG_A_CODEC" ]]; then
+                    echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV/RTMP. Memaksa downgrade ke aac."
+                    FINAL_A_CODEC="aac"
+                 fi
+              fi
+
+              CMD="$CMD -c:a $FINAL_A_CODEC"
+
+              if [[ "$FINAL_A_CODEC" != "copy" && "$USE_A_FILTER" -eq 0 ]]; then
+                 if [[ -n "$AUDIO" ]] && [[ "$A_VOL_EXT" != "default"* ]]; then 
+                    if [[ "$A_MAP" == "1:a" ]]; then CMD="$CMD -af \"volume=$CLEAN_VOL_EXT\""; fi
+                 fi
+                 if [[ -z "$AUDIO" ]] && [[ "$A_VOL_MAIN" != "default"* ]]; then 
+                    HAS_AUDIO=$(timeout 10s ffprobe -v error -analyzeduration 5000000 -probesize 5000000 -select_streams a -show_entries stream=codec_type -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null | head -n 1)
+                    if [[ "$HAS_AUDIO" == "audio" ]]; then
+                       CMD="$CMD -af \"volume=$CLEAN_VOL_MAIN\""
+                    fi
+                 fi
+              fi
+              
               if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
               
-              # FIX BARU: Proteksi OS agar Stream Key yang memuat karakter dollar ($) tidak hancur
-              SAFE_RTMP="${RTMP//\$/\\\\$}"
-              SAFE_KEY="${KEY//\$/\\\\$}"
+              # PROTEKSI MUTLAK BASH INJECTION (BACKTICK, DOLLAR, QUOTE, BACKSLASH)
+              SAFE_RTMP="${RTMP//\\/\\\\\\\\}"
+              SAFE_RTMP="${SAFE_RTMP//\`/\\\\\`}"
+              SAFE_RTMP="${SAFE_RTMP//\$/\\\\$}"
+              SAFE_RTMP="${SAFE_RTMP//\"/\\\\\"}"
+              
+              SAFE_KEY="${KEY//\\/\\\\\\\\}"
+              SAFE_KEY="${SAFE_KEY//\`/\\\\\`}"
+              SAFE_KEY="${SAFE_KEY//\$/\\\\$}"
+              SAFE_KEY="${SAFE_KEY//\"/\\\\\"}"
               
               CMD="$CMD -f flv \"$SAFE_RTMP/$SAFE_KEY\""
               
