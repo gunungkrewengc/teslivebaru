@@ -192,13 +192,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up FFmpeg 8, Fonts & yt-dlp (With Cookies)
+      - name: Set up FFmpeg 8, Fonts & yt-dlp (With Cookies & JS Engine)
         env:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
-          sudo apt install ffmpeg fonts-freefont-ttf -y -qq > /dev/null
+          # Menginstal nodejs agar yt-dlp bisa memecahkan JS n-sig challenge YouTube
+          sudo apt install ffmpeg fonts-freefont-ttf nodejs -y -qq > /dev/null
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
           
@@ -261,13 +262,14 @@ jobs:
               RESOLVED_VIDEO="$VIDEO"
               if [[ "$VIDEO" == *"youtube.com"* || "$VIDEO" == *"youtu.be"* ]]; then
                  echo "🔄 Mengekstrak M3U8/Media Video dari YouTube..."
-                 RESOLVED_VIDEO=$(yt-dlp -g -f 'best[height<=720]/best' "$VIDEO" | head -n 1)
+                 # Menggunakan extractor-args untuk menyamar sebagai Android guna menghindari blokir bot
+                 RESOLVED_VIDEO=$(yt-dlp --extractor-args 'youtube:player_client=android,web' -g -f 'best[height<=720]/best' "$VIDEO" | head -n 1)
               fi
               
               RESOLVED_AUDIO="$AUDIO"
               if [[ -n "$AUDIO" ]] && [[ "$AUDIO" == *"youtube.com"* || "$AUDIO" == *"youtu.be"* ]]; then
                  echo "🔄 Mengekstrak Media Audio dari YouTube..."
-                 RESOLVED_AUDIO=$(yt-dlp -g -f 'bestaudio/best' "$AUDIO" | head -n 1)
+                 RESOLVED_AUDIO=$(yt-dlp --extractor-args 'youtube:player_client=android,web' -g -f 'bestaudio/best' "$AUDIO" | head -n 1)
               fi
 
               CMD="ffmpeg"
