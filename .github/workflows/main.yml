@@ -308,7 +308,8 @@ jobs:
                 if [[ "$IMG_POS" == "Kiri Atas" ]]; then POS="10:10"; fi
                 if [[ "$IMG_POS" == "Kanan Bawah" ]]; then POS="W-w-10:H-h-10"; fi
                 if [[ "$IMG_POS" == "Kiri Bawah" ]]; then POS="10:H-h-10"; fi
-                FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS[v_img];"
+                # FIX FATAL: Ditambahkan :shortest=1 pada overlay gambar agar tidak terjadi infinite loop pada output
+                FILTER="${FILTER}[${IMG_IDX}:v]${SCALE_CMD}format=rgba[wm];[$V_MAP][wm]overlay=$POS:shortest=1[v_img];"
                 V_MAP="v_img"
               fi
               
@@ -411,7 +412,7 @@ jobs:
                  if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$AUDIO"; fi
                  
                  ORIG_A_CODEC=$(timeout 15s ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$TARGET_AUDIO_FILE" 2>/dev/null | head -n 1)
-                 # FIX: Dihapusnya && -n "$ORIG_A_CODEC" membuat fallback akan selalu jalan apabila probing timeout/gagal
+                 # FIX: Selalu jalan walau probe timeout
                  if [[ "$ORIG_A_CODEC" != "aac" && "$ORIG_A_CODEC" != "mp3" ]]; then
                     echo "⚠️ Peringatan: Audio sumber ($ORIG_A_CODEC) ditolak oleh container FLV/RTMP atau gagal dibaca. Memaksa downgrade ke aac."
                     FINAL_A_CODEC="aac"
@@ -434,22 +435,14 @@ jobs:
               
               if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
               
-              SAFE_RTMP="${RTMP//\\/\\\\\\\\}"
-              SAFE_RTMP="${SAFE_RTMP//\\`/\\\\\\`}"
-              SAFE_RTMP="${SAFE_RTMP//\$/\\\\$}"
-              SAFE_RTMP="${SAFE_RTMP//\"/\\\\\"}"
-              
-              SAFE_KEY="${KEY//\\/\\\\\\\\}"
-              SAFE_KEY="${SAFE_KEY//\\`/\\\\\\`}"
-              SAFE_KEY="${SAFE_KEY//\$/\\\\$}"
-              SAFE_KEY="${SAFE_KEY//\"/\\\\\"}"
-              
-              CMD="$CMD -f flv "$SAFE_RTMP/$SAFE_KEY""
+              # FIX: Menggunakan single quotes untuk membungkus output url agar terhindar dari variabel injeksi Bash
+              CMD="$CMD -f flv '$RTMP/$KEY'"
               
               FINAL_CMD="$CMD"
             fi
 
-            printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
+            printf "%s
+" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
             echo "================ MENJALANKAN PERINTAH ================"
