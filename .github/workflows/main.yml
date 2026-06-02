@@ -3,17 +3,11 @@ name: FFmpeg Modular Ultimate Livestream
 on:
   workflow_dispatch:
     inputs:
-      # =========================================================
-      # 0. SAKELAR UTAMA: COMMAND MANUAL (BYPASS ALL)
-      # =========================================================
       manual_cmd:
         description: '⚠️ [COMMAND MANUAL] Tempel hasil generate HTML di sini (Bypass semua setting bawah)'
         required: false
         default: ''
 
-      # =========================================================
-      # 1. KELOMPOK VIDEO (INPUT, LAYOUT & COMMAND)
-      # =========================================================
       video:
         description: '▶️ [INPUT VIDEO] URL (m3u8/mp4) atau Nama File'
         required: false
@@ -77,9 +71,6 @@ on:
           - 60
         default: 'default (Asli)'
 
-      # =========================================================
-      # 2. KELOMPOK AUDIO (INPUT & COMMAND)
-      # =========================================================
       audio:
         description: '🎵 [INPUT AUDIO] Opsional (Kosongkan jika pakai audio asli video)'
         required: false
@@ -129,9 +120,6 @@ on:
           - 1.5 (Lebih Keras)
         default: 'default (Normal)'
 
-      # =========================================================
-      # 3. KELOMPOK GAMBAR / WATERMARK (INPUT & COMMAND)
-      # =========================================================
       image:
         description: '🖼️ [INPUT GAMBAR] URL/File (Kosongkan jika tidak ada)'
         required: false
@@ -141,9 +129,9 @@ on:
         type: choice
         options:
           - default (Ukuran Asli)
-          - 100:-1 (Lebar 100px)
-          - 200:-1 (Lebar 200px)
-          - 300:-1 (Lebar 300px)
+          - 100:-2 (Lebar 100px)
+          - 200:-2 (Lebar 200px)
+          - 300:-2 (Lebar 300px)
         default: 'default (Ukuran Asli)'
       image_pos:
         description: '   ↳ Command Gambar: Posisi Overlay'
@@ -155,9 +143,6 @@ on:
           - Kiri Bawah
         default: 'default (Kanan Atas)'
 
-      # =========================================================
-      # 4. KELOMPOK TEKS / OVERLAY (INPUT & COMMAND)
-      # =========================================================
       text:
         description: '📝 [INPUT TEKS] Ketik Teks (Kosongkan jika tidak ada)'
         required: false
@@ -190,13 +175,10 @@ on:
           - Tengah Screen
         default: 'default (Bawah Tengah)'
 
-      # =========================================================
-      # 5. DESTINASI OUTPUT STREAM
-      # =========================================================
       rtmp_link:
         description: '🚀 Link RTMP Server'
         required: false
-        default: 'rtmp://a.rtmp.youtube.com/live2'
+        default: 'rtmp://[a.rtmp.youtube.com/live2](https://a.rtmp.youtube.com/live2)'
       stream_key:
         description: '🔑 Stream Key'
         required: false
@@ -242,9 +224,6 @@ jobs:
           RTMP: ${{ github.event.inputs.rtmp_link }}
           KEY: ${{ github.event.inputs.stream_key }}
         run: |
-          # ---------------------------------------------------------
-          # BACKGROUND WORKER UNTUK FITUR BOT REAL-TIME
-          # ---------------------------------------------------------
           (
             while true; do
               git pull --rebase > /dev/null 2>&1
@@ -373,9 +352,6 @@ jobs:
                 CMD="$CMD -map 0:v? -map $A_MAP?"
               fi
               
-              # =======================================================
-              # ENCODER VIDEO & PENCEGAT HEVC COPY
-              # =======================================================
               FORCE_V_ENCODE=0; if [[ "$V_MAP" != "0:v" || "$FORCE_V_ENCODE_LAY" -eq 1 ]]; then FORCE_V_ENCODE=1; fi
               
               FINAL_V_CODEC="copy"
@@ -385,7 +361,6 @@ jobs:
                 if [[ "$V_CODEC" != "default"* ]]; then FINAL_V_CODEC="$V_CODEC"; fi
               fi
               
-              # FIX BARU: Mencegat HEVC dari dropdown ATAU dari sumber video asli jika mode copy aktif
               if [[ "$FINAL_V_CODEC" == "libx265" && "$RTMP" == *"rtmp"* ]]; then
                 echo "⚠️ Peringatan: Container FLV (RTMP) tidak kompatibel dengan codec libx265 (HEVC). Memaksa downgrade ke libx264."
                 FINAL_V_CODEC="libx264"
@@ -407,9 +382,6 @@ jobs:
               if [[ "$V_BITRATE" != "default"* ]]; then CMD="$CMD -b:v $V_BITRATE"; fi
               if [[ "$V_FPS" != "default"* && "$FINAL_V_CODEC" != "copy" ]]; then CMD="$CMD -r $V_FPS"; fi
               
-              # =======================================================
-              # ENCODER AUDIO & PENCEGAT OPUS/VORBIS COPY
-              # =======================================================
               FORCE_A_ENCODE=0
               if [[ "$A_VOL_MAIN" != "default"* ]] || [[ "$A_VOL_EXT" != "default"* ]]; then FORCE_A_ENCODE=1; fi
 
@@ -420,7 +392,6 @@ jobs:
                 if [[ "$A_CODEC" != "default"* ]]; then FINAL_A_CODEC="$A_CODEC"; fi
               fi
 
-              # FIX BARU: Mencegat Opus/Vorbis secara dinamis pada audio utama maupun audio pengganti
               if [[ "$FINAL_A_CODEC" == "copy" && "$RTMP" == *"rtmp"* ]]; then
                  TARGET_AUDIO_FILE="$VIDEO"
                  if [[ "$A_MAP" == "1:a" ]]; then TARGET_AUDIO_FILE="$AUDIO"; fi
@@ -448,7 +419,6 @@ jobs:
               
               if [[ "$A_BITRATE" != "default"* ]]; then CMD="$CMD -b:a $A_BITRATE"; fi
               
-              # PROTEKSI MUTLAK BASH INJECTION (BACKTICK, DOLLAR, QUOTE, BACKSLASH)
               SAFE_RTMP="${RTMP//\\/\\\\\\\\}"
               SAFE_RTMP="${SAFE_RTMP//\`/\\\\\`}"
               SAFE_RTMP="${SAFE_RTMP//\$/\\\\$}"
@@ -464,9 +434,6 @@ jobs:
               FINAL_CMD="$CMD"
             fi
 
-            # ---------------------------------------------------------
-            # EKSEKUSI .SH DINAMIS UNTUK KEAMANAN KARAKTER BASH
-            # ---------------------------------------------------------
             printf "%s\n" "#!/bin/bash" "$FINAL_CMD" > run_stream.sh
             chmod +x run_stream.sh
             
