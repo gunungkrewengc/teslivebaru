@@ -192,25 +192,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up FFmpeg 8, Fonts & yt-dlp (With Cookies & JS Engine)
+      - name: Set up FFmpeg 8, Fonts & yt-dlp (With JS Engine)
         env:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
-          # Menginstal nodejs agar yt-dlp bisa memecahkan JS n-sig challenge YouTube
+          # Tambahan nodejs wajib agar yt-dlp bisa memecahkan puzzle n-sig YouTube
           sudo apt install ffmpeg fonts-freefont-ttf nodejs -y -qq > /dev/null
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
           
-          # --- INJEKSI COOKIES OTOMATIS ---
+          # Failsafe injeksi cookies
           mkdir -p ~/.config/yt-dlp
           if [[ -n "$YT_COOKIES" ]]; then
             echo "$YT_COOKIES" > ~/.config/yt-dlp/cookies.txt
-            echo "--cookies ~/.config/yt-dlp/cookies.txt" > ~/.config/yt-dlp/config
             echo "✅ Kunci Cookies YouTube berhasil disuntikkan!"
           else
-            echo "⚠️ Secret YT_COOKIES tidak ditemukan, yt-dlp berjalan tanpa login (Rawan blokir bot)..."
+            touch ~/.config/yt-dlp/cookies.txt
+            echo "⚠️ Secret YT_COOKIES tidak ditemukan, melanjutkan dengan penyamaran Android murni..."
           fi
           
       - name: Jalankan Core Engine FFmpeg
@@ -262,14 +262,13 @@ jobs:
               RESOLVED_VIDEO="$VIDEO"
               if [[ "$VIDEO" == *"youtube.com"* || "$VIDEO" == *"youtu.be"* ]]; then
                  echo "🔄 Mengekstrak M3U8/Media Video dari YouTube..."
-                 # Menggunakan extractor-args untuk menyamar sebagai Android guna menghindari blokir bot
-                 RESOLVED_VIDEO=$(yt-dlp --extractor-args 'youtube:player_client=android,web' -g -f 'best[height<=720]/best' "$VIDEO" | head -n 1)
+                 RESOLVED_VIDEO=$(yt-dlp --cookies ~/.config/yt-dlp/cookies.txt --extractor-args 'youtube:player_client=android,web' -g -f 'best[height<=720]/best' "$VIDEO" | head -n 1)
               fi
               
               RESOLVED_AUDIO="$AUDIO"
               if [[ -n "$AUDIO" ]] && [[ "$AUDIO" == *"youtube.com"* || "$AUDIO" == *"youtu.be"* ]]; then
                  echo "🔄 Mengekstrak Media Audio dari YouTube..."
-                 RESOLVED_AUDIO=$(yt-dlp --extractor-args 'youtube:player_client=android,web' -g -f 'bestaudio/best' "$AUDIO" | head -n 1)
+                 RESOLVED_AUDIO=$(yt-dlp --cookies ~/.config/yt-dlp/cookies.txt --extractor-args 'youtube:player_client=android,web' -g -f 'bestaudio/best' "$AUDIO" | head -n 1)
               fi
 
               CMD="ffmpeg"
