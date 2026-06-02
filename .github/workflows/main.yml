@@ -192,25 +192,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up FFmpeg 8, Fonts & yt-dlp (With JS Engine)
+      - name: Set up FFmpeg 8, Fonts, yt-dlp & Core Hybrid
         env:
           YT_COOKIES: ${{ secrets.YT_COOKIES }}
         run: |
           sudo add-apt-repository ppa:ubuntuhandbook1/ffmpeg8 -y > /dev/null
           sudo apt update -y -qq > /dev/null
-          # Tambahan nodejs wajib agar yt-dlp bisa memecahkan puzzle n-sig YouTube
+          # Instal nodejs untuk memecahkan puzzle JS jika Mode Private dipakai
           sudo apt install ffmpeg fonts-freefont-ttf nodejs -y -qq > /dev/null
           sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
           sudo chmod a+rx /usr/local/bin/yt-dlp
           
-          # Failsafe injeksi cookies
+          # Siapkan Cookies di belakang layar (tanpa memaksa yt-dlp menggunakannya secara global)
           mkdir -p ~/.config/yt-dlp
           if [[ -n "$YT_COOKIES" ]]; then
             echo "$YT_COOKIES" > ~/.config/yt-dlp/cookies.txt
-            echo "✅ Kunci Cookies YouTube berhasil disuntikkan!"
+            echo "✅ Cookies YouTube disimpan dan siap digunakan untuk Mode Private!"
           else
             touch ~/.config/yt-dlp/cookies.txt
-            echo "⚠️ Secret YT_COOKIES tidak ditemukan, melanjutkan dengan penyamaran Android murni..."
+            echo "⚠️ Secret YT_COOKIES kosong. Mode Private YouTube akan gagal jika digunakan."
           fi
           
       - name: Jalankan Core Engine FFmpeg
@@ -261,14 +261,14 @@ jobs:
   
               RESOLVED_VIDEO="$VIDEO"
               if [[ "$VIDEO" == *"youtube.com"* || "$VIDEO" == *"youtu.be"* ]]; then
-                 echo "🔄 Mengekstrak M3U8/Media Video dari YouTube..."
-                 RESOLVED_VIDEO=$(yt-dlp --cookies ~/.config/yt-dlp/cookies.txt --extractor-args 'youtube:player_client=android,web' -g -f 'best[height<=720]/best' "$VIDEO" | head -n 1)
+                 echo "🔄 Mengekstrak M3U8/Media Video dari YouTube (Mode Publik Default)..."
+                 RESOLVED_VIDEO=$(yt-dlp --extractor-args 'youtube:player_client=android,tv' -g -f 'best[height<=720]/best' "$VIDEO" | head -n 1)
               fi
               
               RESOLVED_AUDIO="$AUDIO"
               if [[ -n "$AUDIO" ]] && [[ "$AUDIO" == *"youtube.com"* || "$AUDIO" == *"youtu.be"* ]]; then
-                 echo "🔄 Mengekstrak Media Audio dari YouTube..."
-                 RESOLVED_AUDIO=$(yt-dlp --cookies ~/.config/yt-dlp/cookies.txt --extractor-args 'youtube:player_client=android,web' -g -f 'bestaudio/best' "$AUDIO" | head -n 1)
+                 echo "🔄 Mengekstrak Media Audio dari YouTube (Mode Publik Default)..."
+                 RESOLVED_AUDIO=$(yt-dlp --extractor-args 'youtube:player_client=android,tv' -g -f 'bestaudio/best' "$AUDIO" | head -n 1)
               fi
 
               CMD="ffmpeg"
