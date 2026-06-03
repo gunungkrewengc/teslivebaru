@@ -29,11 +29,13 @@ jobs:
       with:
         python-version: '3.x'
 
+    # JS Runtime agar yt-dlp bisa memecahkan enkripsi player YouTube
     - name: Set up Node.js (JS Runtime)
       uses: actions/setup-node@v4
       with:
         node-version: '20'
 
+    # FFmpeg untuk menggabungkan audio dan video beresolusi tinggi
     - name: Install FFmpeg
       run: |
         sudo apt-get update
@@ -52,8 +54,8 @@ jobs:
         mkdir -p output_downloads
         cd output_downloads
         
-        # Mengubah klien ke android/web untuk menghindari verifikasi ketat GVS PO Token milik iOS
-        YT_ARGS="--extractor-args youtube:player_client=android,web --no-warnings"
+        # Senjata pamungkas: Menggunakan klien tvhtml5 agar lolos dari deteksi bot YouTube
+        YT_ARGS="--extractor-args youtube:player_client=tvhtml5,web --no-warnings"
         
         if [ "$EXTRACT" = "true" ]; then
           echo "=== MEMULAI EKSTRAKSI INFORMASI VIDEO ==="
