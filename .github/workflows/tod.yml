@@ -29,16 +29,16 @@ jobs:
       with:
         python-version: '3.x'
 
-    # Menginstal FFmpeg dan Node.js langsung via apt-get agar pasti terdeteksi oleh yt-dlp di Linux
     - name: Install FFmpeg and Node.js
       run: |
         sudo apt-get update
         sudo apt-get install ffmpeg nodejs -y
 
-    - name: Install yt-dlp
+    # MENGGUNAKAN VERSI NIGHTLY/PRE-RELEASE
+    - name: Install yt-dlp (Nightly Build)
       run: |
         python3 -m pip install --upgrade pip
-        pip install yt-dlp
+        pip install -U --pre yt-dlp
 
     - name: Run yt-dlp Process with Cookies & TV Client
       run: |
@@ -48,18 +48,15 @@ jobs:
         mkdir -p output_downloads
         cd output_downloads
         
-        # Mengambil cookies dari Secrets
         echo "${{ secrets.YT_COOKIES }}" > yt_cookies.txt
         
-        # Validasi: Cek apakah file cookies benar-benar ada isinya atau kosong
         if [ ! -s yt_cookies.txt ]; then
-          echo "❌ ERROR: File yt_cookies.txt KOSONG! Pastikan kamu sudah membuat secret YT_COOKIES di Settings > Secrets and variables > Actions, dan menempelkan teks cookies ke dalamnya."
+          echo "❌ ERROR: File yt_cookies.txt KOSONG!"
           exit 1
         else
           echo "✅ File cookies berhasil dimuat."
         fi
         
-        # Senjata ganda: Pakai Cookies + Klien TV agar tidak dicurigai meski IP beda negara
         YT_ARGS="--cookies yt_cookies.txt --extractor-args youtube:player_client=tvhtml5,web --no-warnings"
         
         if [ "$EXTRACT" = "true" ]; then
@@ -71,7 +68,6 @@ jobs:
           yt-dlp $YT_ARGS -f "bv*+ba/b" "$URL"
         fi
         
-        # Hapus file cookies agar aman
         rm -f yt_cookies.txt
 
     - name: Upload Results
