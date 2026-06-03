@@ -264,39 +264,31 @@ jobs:
               echo "🔍 Mendeteksi URL YouTube. Menjalankan yt-dlp untuk resolve HLS URL..." >&2
               local RESOLVED
 
-              # Attempt 1: ios client + cookies + PO Token (paling ampuh di datacenter)
-              if [[ -n "$YT_PO_TOKEN" ]]; then
-                echo "--- [DEBUG] Attempt 1: ios + PO Token + cookies ---" >&2
-                RESOLVED=$(yt-dlp -g                   --format "best[protocol=m3u8_native]/best[protocol=m3u8]/best"                   --extractor-args "youtube:player_client=ios;po_token=web+${YT_PO_TOKEN}"                   $COOKIES_FLAG                   "$INPUT_URL" 2>&1 | tee /tmp/ytdlp_debug.txt | grep "^http" | head -n 1)
-                if [[ -z "$RESOLVED" ]]; then cat /tmp/ytdlp_debug.txt >&2; fi
+              # Attempt 1: tv_embedded + cookies (paling stabil untuk live, tidak kena bot check)
+              if [[ -n "$COOKIES_FLAG" ]]; then
+                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=tv_embedded"                   $COOKIES_FLAG                   "$INPUT_URL" 2>/dev/null | head -n 1)
               fi
 
-              # Attempt 2: ios+web client + cookies tanpa po_token
-              if [[ -z "$RESOLVED" ]]; then
-                echo "--- [DEBUG] Attempt 2: ios+web + cookies ---" >&2
-                RESOLVED=$(yt-dlp -g                   --format "best[protocol=m3u8_native]/best[protocol=m3u8]/best"                   --extractor-args "youtube:player_client=ios,web"                   $COOKIES_FLAG                   "$INPUT_URL" 2>&1 | tee /tmp/ytdlp_debug.txt | grep "^http" | head -n 1)
-                if [[ -z "$RESOLVED" ]]; then cat /tmp/ytdlp_debug.txt >&2; fi
+              # Attempt 2: web client + cookies
+              if [[ -z "$RESOLVED" ]] && [[ -n "$COOKIES_FLAG" ]]; then
+                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=web"                   $COOKIES_FLAG                   "$INPUT_URL" 2>/dev/null | head -n 1)
               fi
 
-              # Attempt 3: mweb + cookies
-              if [[ -z "$RESOLVED" ]]; then
-                echo "--- [DEBUG] Attempt 3: mweb + cookies ---" >&2
-                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=mweb"                   $COOKIES_FLAG                   "$INPUT_URL" 2>&1 | tee /tmp/ytdlp_debug.txt | grep "^http" | head -n 1)
-                if [[ -z "$RESOLVED" ]]; then cat /tmp/ytdlp_debug.txt >&2; fi
+              # Attempt 3: tv client + cookies (TV client bypass bot detection)
+              if [[ -z "$RESOLVED" ]] && [[ -n "$COOKIES_FLAG" ]]; then
+                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=tv"                   $COOKIES_FLAG                   "$INPUT_URL" 2>/dev/null | head -n 1)
               fi
 
-              # Attempt 4: last resort tanpa cookies
+              # Attempt 4: ios tanpa cookies (kadang lolos untuk public live)
               if [[ -z "$RESOLVED" ]]; then
-                echo "--- [DEBUG] Attempt 4: ios tanpa cookies ---" >&2
-                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=ios"                   "$INPUT_URL" 2>&1 | tee /tmp/ytdlp_debug.txt | grep "^http" | head -n 1)
-                if [[ -z "$RESOLVED" ]]; then cat /tmp/ytdlp_debug.txt >&2; fi
+                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=ios"                   "$INPUT_URL" 2>/dev/null | head -n 1)
               fi
 
               if [[ -n "$RESOLVED" ]]; then
                 echo "✅ URL berhasil di-resolve fresh." >&2
                 echo "$RESOLVED"
               else
-                echo "❌ yt-dlp gagal semua attempt. Pastikan secret YT_COOKIES sudah diisi dan video benar-benar public." >&2
+                echo "❌ yt-dlp gagal semua attempt. Cek apakah cookies valid dan video benar-benar public." >&2
                 echo "$INPUT_URL"
               fi
             else
