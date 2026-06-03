@@ -266,22 +266,30 @@ jobs:
 
               # Attempt 1: ios client + cookies + PO Token (paling ampuh di datacenter)
               if [[ -n "$YT_PO_TOKEN" ]]; then
-                RESOLVED=$(yt-dlp -g                   --format "best[protocol=m3u8_native]/best[protocol=m3u8]/best"                   --extractor-args "youtube:player_client=ios;po_token=web+${YT_PO_TOKEN}"                   $COOKIES_FLAG                   "$INPUT_URL" 2>/dev/null | head -n 1)
+                echo "--- [DEBUG] Attempt 1: ios + PO Token + cookies ---" >&2
+                RESOLVED=$(yt-dlp -g                   --format "best[protocol=m3u8_native]/best[protocol=m3u8]/best"                   --extractor-args "youtube:player_client=ios;po_token=web+${YT_PO_TOKEN}"                   $COOKIES_FLAG                   "$INPUT_URL" 2>&1 | tee /tmp/ytdlp_debug.txt | grep "^http" | head -n 1)
+                if [[ -z "$RESOLVED" ]]; then cat /tmp/ytdlp_debug.txt >&2; fi
               fi
 
               # Attempt 2: ios+web client + cookies tanpa po_token
               if [[ -z "$RESOLVED" ]]; then
-                RESOLVED=$(yt-dlp -g                   --format "best[protocol=m3u8_native]/best[protocol=m3u8]/best"                   --extractor-args "youtube:player_client=ios,web"                   $COOKIES_FLAG                   "$INPUT_URL" 2>/dev/null | head -n 1)
+                echo "--- [DEBUG] Attempt 2: ios+web + cookies ---" >&2
+                RESOLVED=$(yt-dlp -g                   --format "best[protocol=m3u8_native]/best[protocol=m3u8]/best"                   --extractor-args "youtube:player_client=ios,web"                   $COOKIES_FLAG                   "$INPUT_URL" 2>&1 | tee /tmp/ytdlp_debug.txt | grep "^http" | head -n 1)
+                if [[ -z "$RESOLVED" ]]; then cat /tmp/ytdlp_debug.txt >&2; fi
               fi
 
-              # Attempt 3: mweb (mobile web) + cookies
+              # Attempt 3: mweb + cookies
               if [[ -z "$RESOLVED" ]]; then
-                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=mweb"                   $COOKIES_FLAG                   "$INPUT_URL" 2>/dev/null | head -n 1)
+                echo "--- [DEBUG] Attempt 3: mweb + cookies ---" >&2
+                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=mweb"                   $COOKIES_FLAG                   "$INPUT_URL" 2>&1 | tee /tmp/ytdlp_debug.txt | grep "^http" | head -n 1)
+                if [[ -z "$RESOLVED" ]]; then cat /tmp/ytdlp_debug.txt >&2; fi
               fi
 
               # Attempt 4: last resort tanpa cookies
               if [[ -z "$RESOLVED" ]]; then
-                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=ios"                   "$INPUT_URL" 2>/dev/null | head -n 1)
+                echo "--- [DEBUG] Attempt 4: ios tanpa cookies ---" >&2
+                RESOLVED=$(yt-dlp -g                   --extractor-args "youtube:player_client=ios"                   "$INPUT_URL" 2>&1 | tee /tmp/ytdlp_debug.txt | grep "^http" | head -n 1)
+                if [[ -z "$RESOLVED" ]]; then cat /tmp/ytdlp_debug.txt >&2; fi
               fi
 
               if [[ -n "$RESOLVED" ]]; then
