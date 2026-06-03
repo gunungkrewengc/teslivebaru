@@ -1,0 +1,78 @@
+name: YouTube Extractor via yt-dlp
+
+# Workflow ini akan berjalan secara manual melalui tombol "Run workflow" di tab Actions
+on:
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'Masukkan URL Video YouTube'
+        required: true
+        default: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+      extract_only:
+        description: 'Hanya Ekstrak Info? (true = hanya teks info / false = download videonya)'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  extract_and_download:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout repositori kamu
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # 2. Install Python yang dibutuhkan oleh yt-dlp
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    # 3. Install ffmpeg (wajib untuk menggabungkan video & audio kualitas tinggi di YouTube)
+    - name: Install FFmpeg
+      run: |
+        sudo apt-get update
+        sudo apt-get install ffmpeg -y
+
+    # 4. Install yt-dlp versi terbaru
+    - name: Install yt-dlp
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install yt-dlp
+
+    # 5. Proses Ekstraksi atau Download berdasarkan pilihan user
+    - name: Run yt-dlp Process
+      run: |
+        URL="${{ github.event.inputs.video_url }}"
+        EXTRACT="${{ github.event.inputs.extract_only }}"
+        
+        # Membuat folder hasil agar rapi
+        mkdir -p output_downloads
+        cd output_downloads
+        
+        if [ "$EXTRACT" = "true" ]; then
+          echo "=== MEMULAI EKSTRAKSI INFORMASI VIDEO ==="
+          # Mengambil info format JSON dan menyimpannya ke file teks
+          yt-dlp --dump-json "$URL" > info_video.json
+          
+          # Menampilkan ringkasan format yang tersedia di log GitHub
+          echo "=== DAFTAR FORMAT TERSEDIA ==="
+          yt-dlp -F "$URL"
+        else
+          echo "=== MEMULAI DOWNLOAD VIDEO (KUALITAS TERBAIK) ==="
+          # Mendownload video kualitas terbaik yang digabung otomatis oleh ffmpeg
+          yt-dlp -f "bv*+ba/b" "$URL"
+        fi
+
+    # 6. Upload hasil (file JSON atau file Video) ke GitHub Artifacts agar bisa kamu download ke HP/Laptop
+    - name: Upload Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: yt-dlp-output
+        path: output_downloads/
+        retention-days: 1 # File akan otomatis dihapus dalam 1 hari untuk menghemat ruang
+        
