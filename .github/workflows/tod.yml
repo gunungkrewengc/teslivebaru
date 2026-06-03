@@ -8,7 +8,7 @@ on:
         required: true
         default: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
       extract_only:
-        description: 'Hanya Ekstrak Info? (true = hanya teks info / false = download videonya)'
+        description: 'Hanya Ekstrak Info? (true = hanya info / false = download video)'
         required: true
         default: 'true'
         type: choice
@@ -29,13 +29,11 @@ jobs:
       with:
         python-version: '3.x'
 
-    # JS Runtime agar yt-dlp bisa memecahkan enkripsi player YouTube
-    - name: Set up Node.js (JS Runtime)
+    - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
 
-    # FFmpeg untuk menggabungkan audio dan video beresolusi tinggi
     - name: Install FFmpeg
       run: |
         sudo apt-get update
@@ -46,7 +44,7 @@ jobs:
         python3 -m pip install --upgrade pip
         pip install yt-dlp
 
-    - name: Run yt-dlp Process
+    - name: Run yt-dlp Process with Cookies
       run: |
         URL="${{ github.event.inputs.video_url }}"
         EXTRACT="${{ github.event.inputs.extract_only }}"
@@ -54,19 +52,23 @@ jobs:
         mkdir -p output_downloads
         cd output_downloads
         
-        # Senjata pamungkas: Menggunakan klien tvhtml5 agar lolos dari deteksi bot YouTube
-        YT_ARGS="--extractor-args youtube:player_client=tvhtml5,web --no-warnings"
+        # 1. Memanggil rahasia cookies dari GitHub Secrets dan menjadikannya file
+        echo "${{ secrets.YT_COOKIES }}" > yt_cookies.txt
         
+        # 2. Proses eksekusi dengan menyertakan file cookies
         if [ "$EXTRACT" = "true" ]; then
           echo "=== MEMULAI EKSTRAKSI INFORMASI VIDEO ==="
-          yt-dlp $YT_ARGS --dump-json "$URL" > info_video.json
+          yt-dlp --cookies yt_cookies.txt --no-warnings --dump-json "$URL" > info_video.json
           
           echo "=== DAFTAR FORMAT TERSEDIA ==="
-          yt-dlp $YT_ARGS -F "$URL"
+          yt-dlp --cookies yt_cookies.txt --no-warnings -F "$URL"
         else
-          echo "=== MEMULAI DOWNLOAD VIDEO (KUALITAS TERBAIK) ==="
-          yt-dlp $YT_ARGS -f "bv*+ba/b" "$URL"
+          echo "=== MEMULAI DOWNLOAD VIDEO ==="
+          yt-dlp --cookies yt_cookies.txt --no-warnings -f "bv*+ba/b" "$URL"
         fi
+        
+        # 3. Menghapus file cookies setelah selesai agar aman
+        rm -f yt_cookies.txt
 
     - name: Upload Results
       uses: actions/upload-artifact@v4
