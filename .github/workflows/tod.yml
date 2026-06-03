@@ -1,4 +1,4 @@
-name: YouTube Extractor via yt-dlp
+name: Get YouTube Direct Link
 
 on:
   workflow_dispatch:
@@ -7,72 +7,42 @@ on:
         description: 'Masukkan URL Video YouTube'
         required: true
         default: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-      extract_only:
-        description: 'Hanya Ekstrak Info? (true = hanya info / false = download video)'
+      format_choice:
+        description: 'Pilih tipe link yang ingin diambil:'
         required: true
-        default: 'true'
+        default: 'b'
         type: choice
         options:
-          - 'true'
-          - 'false'
+          - 'b' # Kualitas standar (Video + Audio gabung, max 720p)
+          - 'bestvideo' # Kualitas HD (Hanya Video, tanpa suara)
+          - 'bestaudio' # Hanya Suara (Audio murni)
 
 jobs:
-  extract_and_download:
+  get_link:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.x'
 
-    - name: Install FFmpeg and Node.js
-      run: |
-        sudo apt-get update
-        sudo apt-get install ffmpeg nodejs -y
-
-    # MENGGUNAKAN VERSI NIGHTLY/PRE-RELEASE
     - name: Install yt-dlp (Nightly Build)
       run: |
         python3 -m pip install --upgrade pip
         pip install -U --pre yt-dlp
 
-    - name: Run yt-dlp Process with Cookies & TV Client
+    - name: Print Direct Link to Log
       run: |
         URL="${{ github.event.inputs.video_url }}"
-        EXTRACT="${{ github.event.inputs.extract_only }}"
+        FORMAT="${{ github.event.inputs.format_choice }}"
         
-        mkdir -p output_downloads
-        cd output_downloads
+        echo "=================================================="
+        echo "BERIKUT ADALAH DIRECT LINK KAMU:"
+        echo "=================================================="
         
-        echo "${{ secrets.YT_COOKIES }}" > yt_cookies.txt
+        # Perintah -g digunakan untuk hanya mengambil URL mentah
+        yt-dlp --extractor-args youtube:player_client=tvhtml5,web --no-warnings -f "$FORMAT" -g "$URL"
         
-        if [ ! -s yt_cookies.txt ]; then
-          echo "❌ ERROR: File yt_cookies.txt KOSONG!"
-          exit 1
-        else
-          echo "✅ File cookies berhasil dimuat."
-        fi
-        
-        YT_ARGS="--cookies yt_cookies.txt --extractor-args youtube:player_client=tvhtml5,web --no-warnings"
-        
-        if [ "$EXTRACT" = "true" ]; then
-          echo "=== MEMULAI EKSTRAKSI INFORMASI VIDEO ==="
-          yt-dlp $YT_ARGS --dump-json "$URL" > info_video.json
-          yt-dlp $YT_ARGS -F "$URL"
-        else
-          echo "=== MEMULAI DOWNLOAD VIDEO ==="
-          yt-dlp $YT_ARGS -f "bv*+ba/b" "$URL"
-        fi
-        
-        rm -f yt_cookies.txt
-
-    - name: Upload Results
-      uses: actions/upload-artifact@v4
-      with:
-        name: yt-dlp-output
-        path: output_downloads/
-        retention-days: 1
+        echo "=================================================="
+        echo "Link di atas memiliki masa kadaluarsa (expired). Segera gunakan!"
