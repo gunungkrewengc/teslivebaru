@@ -29,7 +29,6 @@ jobs:
       with:
         python-version: '3.x'
 
-    # SOLUSI 1: Install Node.js sebagai JavaScript Runtime agar yt-dlp bisa memecahkan kode player YouTube terbaru
     - name: Set up Node.js (JS Runtime)
       uses: actions/setup-node@v4
       with:
@@ -45,8 +44,6 @@ jobs:
         python3 -m pip install --upgrade pip
         pip install yt-dlp
 
-    # SOLUSI 2: Menggunakan parameter "--extractor-args" untuk menyamar sebagai klien alternatif (iOS/Android) 
-    # guna menghindari blokir "Sign in to confirm you're not a bot"
     - name: Run yt-dlp Process
       run: |
         URL="${{ github.event.inputs.video_url }}"
@@ -55,8 +52,8 @@ jobs:
         mkdir -p output_downloads
         cd output_downloads
         
-        # Menggunakan opsi penyamaran klien agar lolos dari deteksi bot
-        YT_ARGS="--extractor-args youtube:player_client=ios,web"
+        # Mengubah klien ke android/web untuk menghindari verifikasi ketat GVS PO Token milik iOS
+        YT_ARGS="--extractor-args youtube:player_client=android,web --no-warnings"
         
         if [ "$EXTRACT" = "true" ]; then
           echo "=== MEMULAI EKSTRAKSI INFORMASI VIDEO ==="
