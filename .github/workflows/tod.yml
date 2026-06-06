@@ -1,4 +1,4 @@
-name: Get YouTube Link via API (No yt-dlp)
+name: Get YouTube Link (MacOS Bypass)
 
 on:
   workflow_dispatch:
@@ -7,57 +7,33 @@ on:
         description: 'Masukkan URL Video YouTube'
         required: true
         default: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-      tipe_media:
-        description: 'Pilih format:'
-        required: true
-        default: 'video'
-        type: choice
-        options:
-          - 'video' # Gabungan video + suara
-          - 'audio' # Hanya suara (MP3)
 
 jobs:
-  get_link_api:
-    runs-on: ubuntu-latest
+  get_link:
+    # KUNCI RAHASIANYA DI SINI: Menggunakan server Mac untuk menghindari blokir IP Azure
+    runs-on: macos-latest 
 
     steps:
-    - name: Fetch Link from API Pihak Ketiga
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Install yt-dlp (Nightly Build)
+      run: |
+        python3 -m pip install --upgrade pip
+        pip install -U --pre yt-dlp
+
+    - name: Print Direct Link to Log
       run: |
         URL="${{ github.event.inputs.video_url }}"
-        TIPE="${{ github.event.inputs.tipe_media }}"
         
         echo "=================================================="
-        echo "MEMINTA BANTUAN API COBALT..."
+        echo "MENCOBA BYPASS DARI SERVER MACOS..."
         echo "=================================================="
         
-        # Konfigurasi payload untuk API (jika user pilih audio, kita set isAudioOnly jadi true)
-        if [ "$TIPE" = "audio" ]; then
-          PAYLOAD="{\"url\": \"$URL\", \"isAudioOnly\": true}"
-        else
-          PAYLOAD="{\"url\": \"$URL\", \"vQuality\": \"720\"}"
-        fi
-
-        # Menembak API menggunakan curl (menyamar seolah-olah kita dari browser)
-        RESPONSE=$(curl -s -X POST "https://api.cobalt.tools/api/json" \
-          -H "Accept: application/json" \
-          -H "Content-Type: application/json" \
-          -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
-          -d "$PAYLOAD")
-        
-        # Membedah hasil JSON untuk mengambil URL langsungnya saja menggunakan jq
-        DIRECT_LINK=$(echo $RESPONSE | jq -r '.url')
-        STATUS=$(echo $RESPONSE | jq -r '.status')
+        # Perintah -g untuk mengambil link URL mentah (kualitas standar gabungan video+audio)
+        yt-dlp --extractor-args youtube:player_client=tvhtml5,web --no-warnings -f "b" -g "$URL"
         
         echo "=================================================="
-        if [ "$DIRECT_LINK" != "null" ] && [ "$DIRECT_LINK" != "" ]; then
-          echo "✅ BERHASIL! BERIKUT ADALAH DIRECT LINK KAMU:"
-          echo ""
-          echo "$DIRECT_LINK"
-          echo ""
-          echo "Catatan: Link ini ada masa kadaluarsanya, segera eksekusi!"
-        else
-          echo "❌ GAGAL MENDAPATKAN LINK."
-          echo "Pesan dari API: $(echo $RESPONSE | jq -r '.text')"
-          echo "Detail mentah: $RESPONSE"
-        fi
-        echo "=================================================="
+        echo "Jika link muncul di atas, segera salin dan gunakan!"
